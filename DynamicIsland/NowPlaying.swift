@@ -42,6 +42,12 @@ final class NowPlaying {
 
     func send(_ command: Command) { run("send", String(command.rawValue)) }
 
+    func seek(to seconds: TimeInterval) {
+        run("seek", String(Int(seconds * 1e6)))
+        elapsedAtTimestamp = seconds // show it now; the stream confirms shortly after
+        timestamp = .now
+    }
+
     /// Chromium browsers can keep the previous tab's artwork when the playing tab changes,
     /// so artwork that didn't change with the track is stale, unless it's the same album.
     var artwork: NSImage? {
