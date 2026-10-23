@@ -1,8 +1,8 @@
 import AppKit
 import Observation
 
-/// Whether the notched display is showing a full-screen app. Window frames can't tell: on notched
-/// Macs a full-screen window and a zoomed one are the same size, but the current Space's type differs.
+/// Whether the notched display is showing a full-screen app: a native full-screen Space, or an app's
+/// own full-screen window covering the whole display, menu bar included (VLC's default mode).
 @MainActor @Observable
 final class FullScreen {
     private(set) var isActive = false
@@ -20,6 +20,10 @@ final class FullScreen {
                 }
             }
         }
+        // App-drawn full screen doesn't switch Spaces, so nothing notifies us.
+        Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { _ in
+            MainActor.assumeIsolated { self.update() }
+        }
     }
 
     private func update() {
@@ -28,7 +32,24 @@ final class FullScreen {
               let uuid = CGDisplayCreateUUIDFromDisplayID(id)?.takeRetainedValue(),
               let spaces = SkyLight.managedDisplaySpaces()
         else { isActive = false; return }
-        isActive = Self.isFullScreen(spaces: spaces, displayUUID: CFUUIDCreateString(nil, uuid) as String)
+        let windows = CGWindowListCopyWindowInfo([.optionOnScreenOnly, .excludeDesktopElements], kCGNullWindowID)
+            as? [[String: Any]] ?? []
+        let active = Self.isFullScreen(spaces: spaces, displayUUID: CFUUIDCreateString(nil, uuid) as String)
+            || Self.coversDisplay(windows: windows, display: CGDisplayBounds(id),
+                                  ownPID: ProcessInfo.processInfo.processIdentifier)
+        if active != isActive { isActive = active }
+    }
+
+    /// Another app has a window exactly covering the display. Zoomed windows stop below the menu bar.
+    nonisolated static func coversDisplay(windows: [[String: Any]], display: CGRect, ownPID: Int32) -> Bool {
+        windows.contains { window in
+            guard window[kCGWindowOwnerPID as String] as? Int32 != ownPID,
+                  (window[kCGWindowLayer as String] as? Int ?? -1) >= 0,
+                  let bounds = window[kCGWindowBounds as String] as? NSDictionary,
+                  let rect = CGRect(dictionaryRepresentation: bounds)
+            else { return false }
+            return rect == display
+        }
     }
 
     /// The display's entry (or "Main" when displays share Spaces) has a current Space of type 4.
