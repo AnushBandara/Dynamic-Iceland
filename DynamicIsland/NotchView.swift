@@ -146,6 +146,9 @@ struct NotchView: View {
         })
         .animation(Self.animation(opening: isExpanded, reduceMotion: reduceMotion), value: size)
         .environment(\.colorScheme, .dark)
+        .onChange(of: activityEnabled && nowPlaying.isPlaying, initial: true) { _, playing in
+            fullScreen.pollsWindows(playing)
+        }
         .onChange(of: hotKey.closeCount) { isHovering = false }
         .onChange(of: isExpanded) { _, expanded in
             if !expanded { Self.returnKeyboardFocus() }

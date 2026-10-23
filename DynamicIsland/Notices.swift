@@ -25,6 +25,8 @@ final class Notices: NSObject {
     @ObservationIgnored private var downloadsListing: Set<String> = []
     @ObservationIgnored private var bluetoothNotification: IOBluetoothUserNotification?
     @ObservationIgnored private var bluetoothStart = Date.distantFuture
+    @ObservationIgnored private var focusSource: DispatchSourceFileSystemObject?
+    @ObservationIgnored private var focusRetry: Task<Void, Never>?
     @ObservationIgnored private var focusMode: String?? // nil until first read: the starting state isn't a change
     @ObservationIgnored private var hideTask: Task<Void, Never>?
 
@@ -34,10 +36,6 @@ final class Notices: NSObject {
 
     func start() {
         startEnabledWatchers()
-        // ponytail: polls a ~2 KB file each second; a file watch if it ever shows up in profiles
-        Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { _ in
-            MainActor.assumeIsolated { self.checkFocus() }
-        }.tolerance = 0.5 // lets macOS batch the wake-up with others
         NotificationCenter.default.addObserver(forName: UserDefaults.didChangeNotification, object: nil, queue: .main) { _ in
             MainActor.assumeIsolated { self.startEnabledWatchers() }
         }
@@ -51,6 +49,9 @@ final class Notices: NSObject {
             bluetoothStart = Date()
             bluetoothNotification = IOBluetoothDevice.register(forConnectNotifications: self,
                                                                selector: #selector(deviceConnected(_:device:)))
+        }
+        if isEnabled(Self.focusKey) {
+            if focusSource == nil { watchFocus() } else if focusMode == nil { checkFocus() } // turned back on
         }
     }
 
@@ -155,6 +156,27 @@ final class Notices: NSObject {
 
     nonisolated static var canReadFocus: Bool {
         (try? Data(contentsOf: focusFolder.appending(path: "Assertions.json"))) != nil
+    }
+
+    /// macOS replaces Assertions.json rather than editing it, so watch its folder, like Downloads.
+    private func watchFocus() {
+        let descriptor = open(Self.focusFolder.path, O_EVTONLY)
+        guard descriptor >= 0 else { // no Full Disk Access yet: try again in a while
+            if focusRetry == nil {
+                focusRetry = Task {
+                    try? await Task.sleep(for: .seconds(30))
+                    focusRetry = nil
+                    startEnabledWatchers()
+                }
+            }
+            return
+        }
+        checkFocus() // the starting state, not shown
+        let source = DispatchSource.makeFileSystemObjectSource(fileDescriptor: descriptor, eventMask: .write, queue: .main)
+        source.setEventHandler { MainActor.assumeIsolated { self.checkFocus() } }
+        source.setCancelHandler { close(descriptor) }
+        source.resume()
+        focusSource = source
     }
 
     private func checkFocus() {
