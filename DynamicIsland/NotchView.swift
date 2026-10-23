@@ -12,6 +12,7 @@ struct NotchView: View {
     let fullScreen: FullScreen
     let clipboard: Clipboard
     let notices: Notices
+    @Environment(\.openSettings) private var openSettings
     @State private var isHovering = false
     @State private var isDropTargeted = false
     @State private var dropZone: DropZone?
@@ -71,11 +72,23 @@ struct NotchView: View {
                         .padding(.leading, 24)
                 }
                 .overlay(alignment: .topTrailing) {
-                    if timerEnabled || countdown.isActive {
-                        CountdownHeaderView(countdown: countdown)
-                            .frame(width: cornerWidth, height: notchSize.height)
-                            .padding(.trailing, 24)
+                    HStack(spacing: 8) {
+                        if timerEnabled || countdown.isActive {
+                            CountdownHeaderView(countdown: countdown)
+                        }
+                        Button { SettingsView.open(openSettings) } label: {
+                            Image(systemName: "gearshape.fill")
+                                .font(.caption)
+                                .foregroundStyle(.secondary)
+                                .frame(width: 22, height: 22)
+                                .background(.white.opacity(0.12), in: Circle())
+                                .contentShape(Circle())
+                        }
+                        .buttonStyle(.plain)
+                        .help("Settings")
                     }
+                    .frame(width: cornerWidth, height: notchSize.height, alignment: .trailing)
+                    .padding(.trailing, 24)
                 }
                 .transition(.opacity)
             } else if showsHUD {
@@ -112,6 +125,9 @@ struct NotchView: View {
         })
         .animation(.spring(response: 0.35, dampingFraction: 0.8), value: size)
         .environment(\.colorScheme, .dark)
+        .onReceive(NotificationCenter.default.publisher(for: SettingsView.openRequest)) { _ in
+            SettingsView.open(openSettings)
+        }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
     }
 

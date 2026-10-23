@@ -21,6 +21,16 @@ struct SettingsView: View {
         .onReceive(Timer.publish(every: 1.5, on: .main, in: .common).autoconnect()) { _ in permissions.refresh() }
     }
 
+    /// Posted when the app is opened again (Finder, Spotlight) so the island, which can open Settings, does.
+    static let openRequest = Notification.Name("openSettingsRequest")
+
+    /// Opens Settings in front of other apps, also when it was already open behind them.
+    static func open(_ openSettings: OpenSettingsAction) {
+        NSApp.activate(ignoringOtherApps: true)
+        openSettings()
+        bringToFront()
+    }
+
     /// The app has no Dock icon, so macOS leaves its windows behind the frontmost app unless it activates.
     static func bringToFront() {
         NSApp.activate(ignoringOtherApps: true)
@@ -34,6 +44,7 @@ struct SettingsView: View {
 
 private struct GeneralSettings: View {
     @AppStorage("useLiquidGlass") private var useLiquidGlass = false
+    @AppStorage(DynamicIslandApp.menuBarIconKey) private var showsMenuBarIcon = true
     @State private var launchAtLogin = SMAppService.mainApp.status == .enabled
 
     var body: some View {
@@ -42,6 +53,13 @@ private struct GeneralSettings: View {
                 FeatureRow(title: "Launch at login", icon: "power", color: .gray,
                            detail: "Start Dynamic Island automatically when you log in to your Mac.",
                            isOn: Binding(get: { launchAtLogin }, set: setLaunchAtLogin))
+            }
+            Section {
+                FeatureRow(title: "Show menu bar icon", icon: "menubar.rectangle", color: .gray,
+                           detail: "Turn off to keep the menu bar clean. Open Settings from the gear in the open island, or by opening Dynamic Island again from Applications.",
+                           isOn: $showsMenuBarIcon)
+            } header: {
+                Text("Menu bar")
             }
             Section {
                 if #available(macOS 26, *) {
