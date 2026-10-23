@@ -9,6 +9,7 @@ struct NotchView: View {
     let agenda: Agenda
     let countdown: Countdown
     let mirror: CameraMirror
+    let fullScreen: FullScreen
     @State private var isHovering = false
     @State private var isDropTargeted = false
     @State private var dropZone: DropZone?
@@ -21,10 +22,12 @@ struct NotchView: View {
     var body: some View {
         // Dragging a file onto the notch opens it too: hover doesn't fire during a drag.
         let isExpanded = isHovering || isDropTargeted
-        let showsHUD = !isExpanded && hud.isVisible
-        let showsBattery = !isExpanded && !showsHUD && battery.alert != nil
-        let showsCountdown = !isExpanded && !showsHUD && !showsBattery && (countdown.isActive || countdown.isFinished)
-        let showsActivity = !isExpanded && !showsHUD && !showsBattery && !showsCountdown && nowPlaying.isPlaying
+        // Full screen: the collapsed island stays empty (black, like the notch); hover still opens it.
+        let showsCompact = !isExpanded && !fullScreen.isActive
+        let showsHUD = showsCompact && hud.isVisible
+        let showsBattery = showsCompact && !showsHUD && battery.alert != nil
+        let showsCountdown = showsCompact && !showsHUD && !showsBattery && (countdown.isActive || countdown.isFinished)
+        let showsActivity = showsCompact && !showsHUD && !showsBattery && !showsCountdown && nowPlaying.isPlaying
         // Wider when the shelf (+120) or the mirror tile (+116) is on.
         let expandedSize = CGSize(width: 520 + (shelfEnabled ? 120 : 0) + (mirrorEnabled ? 116 : 0),
                                   height: NotchPanel.expandedSize.height)

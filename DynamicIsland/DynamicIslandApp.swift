@@ -23,8 +23,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let agenda = Agenda()
     private let countdown = Countdown()
     private let mirror = CameraMirror()
+    private let fullScreen = FullScreen()
     private lazy var panel = NotchPanel(nowPlaying: nowPlaying, shelf: shelf, hud: hud, battery: battery,
-                                        agenda: agenda, countdown: countdown, mirror: mirror)
+                                        agenda: agenda, countdown: countdown, mirror: mirror, fullScreen: fullScreen)
 
     func applicationWillTerminate(_ notification: Notification) {
         nowPlaying.stop()
@@ -32,6 +33,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         nowPlaying.start()
+        fullScreen.start()
+        hud.fullScreen = fullScreen
         hud.start()
         battery.start()
         agenda.start()

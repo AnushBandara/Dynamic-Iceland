@@ -16,6 +16,8 @@ final class SystemHUD {
     private(set) var isMuted = false
     private(set) var isVisible = false
 
+    /// While an app is full screen the island stays empty, so keys go to macOS and its own HUD.
+    @ObservationIgnored var fullScreen: FullScreen?
     @ObservationIgnored private var tap: CFMachPort?
     @ObservationIgnored private var hideTask: Task<Void, Never>?
     @ObservationIgnored private var isWaitingForPermission = false
@@ -58,7 +60,7 @@ final class SystemHUD {
             if let tap { CGEvent.tapEnable(tap: tap, enable: true) }
             return false
         }
-        guard isEnabled, let mediaEvent else { return false }
+        guard isEnabled, fullScreen?.isActive != true, let mediaEvent else { return false }
         let (key, isDown) = Self.mediaKey(data1: mediaEvent.data1)
         let step: Float = mediaEvent.flags.contains([.shift, .option]) ? 1 / 64 : 1 / 16
 
