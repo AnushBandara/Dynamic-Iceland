@@ -43,8 +43,10 @@ struct NotchView: View {
         // The always-on now playing hides in full screen (e.g. over a video); alerts still show.
         let showsActivity = !isExpanded && !fullScreen.isActive && !showsHUD && !showsBattery && notice == nil
             && !showsCountdown && activityEnabled && nowPlaying.isPlaying
-        // Wider when the right-hand column (+120) or the mirror tile (+116) is on.
-        let expandedSize = CGSize(width: 520 + (trayTabs.isEmpty ? 0 : 120) + (mirrorEnabled ? 116 : 0),
+        // Wider when the right-hand column (+120) or the mirror tile (+116) is on, but never so narrow
+        // that the strips beside the notch squeeze the timer presets, pin and gear (~184 pt).
+        let expandedSize = CGSize(width: max(520 + (trayTabs.isEmpty ? 0 : 120) + (mirrorEnabled ? 116 : 0),
+                                             notchSize.width + 2 * (192 + 32)),
                                   height: NotchPanel.expandedSize.height)
         let cornerWidth = (expandedSize.width - notchSize.width) / 2 - 32 // strips beside the notch
         // Each side only as wide as its content: HUD bar / battery percentage / time, or artwork.
