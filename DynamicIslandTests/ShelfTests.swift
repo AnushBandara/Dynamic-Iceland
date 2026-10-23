@@ -12,7 +12,7 @@ import Testing
     try Data().write(to: deleted)
     defer { try? FileManager.default.removeItem(at: kept) }
 
-    Shelf(defaults: defaults).add([kept, deleted, kept, URL(string: "https://olee.ai")!])
+    Shelf(defaults: defaults).add([kept, deleted, kept, URL(string: "https://example.com")!])
     try FileManager.default.removeItem(at: deleted)
 
     let restarted = Shelf(defaults: defaults)
@@ -29,10 +29,10 @@ import Testing
     defer { defaults.removePersistentDomain(forName: suite); try? FileManager.default.removeItem(at: folder) }
     let shelf = Shelf(defaults: defaults, itemsFolder: folder)
 
-    shelf.add([.link(URL(string: "https://olee.ai/docs")!), .text("Meeting notes\nsecond line"), .text("Meeting notes")])
-    #expect(shelf.files.map(\.lastPathComponent) == ["olee.ai.webloc", "Meeting notes.txt", "Meeting notes 2.txt"])
+    shelf.add([.link(URL(string: "https://example.com/docs")!), .text("Meeting notes\nsecond line"), .text("Meeting notes")])
+    #expect(shelf.files.map(\.lastPathComponent) == ["example.com.webloc", "Meeting notes.txt", "Meeting notes 2.txt"])
     let webloc = try PropertyListSerialization.propertyList(from: Data(contentsOf: shelf.files[0]), format: nil) as? [String: String]
-    #expect(webloc?["URL"] == "https://olee.ai/docs")
+    #expect(webloc?["URL"] == "https://example.com/docs")
     #expect(try String(contentsOf: shelf.files[1], encoding: .utf8) == "Meeting notes\nsecond line")
 
     let text = shelf.files[1]

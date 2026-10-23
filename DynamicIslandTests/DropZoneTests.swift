@@ -13,7 +13,7 @@ import Testing
 @MainActor @Test func droppedItemsLoadAsFileLinkOrText() async {
     let file = URL(filePath: "/tmp/report.pdf")
     #expect(await DroppedItem.load(NSItemProvider(object: file as NSURL)) == .file(file))
-    let link = URL(string: "https://olee.ai/docs")!
+    let link = URL(string: "https://example.com/docs")!
     #expect(await DroppedItem.load(NSItemProvider(object: link as NSURL)) == .link(link))
     #expect(await DroppedItem.load(NSItemProvider(object: "Call Nimal" as NSString)) == .text("Call Nimal"))
 }
