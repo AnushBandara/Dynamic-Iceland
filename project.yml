@@ -3,6 +3,9 @@ options:
   bundleIdPrefix: ai.olee
   deploymentTarget:
     macOS: "14.0"
+configFiles:
+  Debug: Config/Signing.xcconfig
+  Release: Config/Signing.xcconfig
 settings:
   base:
     SWIFT_VERSION: "6.0"
@@ -30,7 +33,6 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: ai.olee.dynamicisland
         ENABLE_HARDENED_RUNTIME: YES # required for notarization (direct download, no sandbox)
-        CODE_SIGN_STYLE: Automatic
     scheme:
       testTargets: [DynamicIslandTests]
 

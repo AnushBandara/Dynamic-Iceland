@@ -1,0 +1,5 @@
+// Builds sign ad-hoc by default. To keep macOS permissions (Accessibility) across
+// rebuilds, create a git-ignored Config/Local.xcconfig with a stable identity, e.g.:
+//   CODE_SIGN_STYLE = Manual
+//   CODE_SIGN_IDENTITY = Dynamic Island Dev
+#include? "Local.xcconfig"
