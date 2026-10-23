@@ -3,13 +3,12 @@ import SwiftUI
 /// Files held on the island: drag out to use, double-click to open, right-click for more.
 struct ShelfView: View {
     let shelf: Shelf
-    let isDropTargeted: Bool
 
     var body: some View {
         ZStack {
             RoundedRectangle(cornerRadius: 14)
                 .strokeBorder(style: StrokeStyle(lineWidth: 1.5, dash: [5]))
-                .foregroundStyle(.white.opacity(isDropTargeted ? 0.9 : 0.25))
+                .foregroundStyle(.white.opacity(0.25))
             if shelf.files.isEmpty {
                 Label("Drop files here", systemImage: "tray.and.arrow.down")
                     .font(.caption)
