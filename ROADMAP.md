@@ -8,7 +8,7 @@
 - [x] Battery: charger-connected and 20% / 10% low-battery alerts (IOKit power source notifications)
 - [x] Calendar: current / next event beside the notch with a join button for meeting links (EventKit)
 - [x] Timer / Pomodoro: 5 / 15 / 25 min presets beside the notch, pause / stop, compact countdown, "Done" alert with sound
-- [ ] AirDrop drop target (`NSSharingService(named: .sendViaAirDrop)`)
+- [x] AirDrop drop target: Shelf / AirDrop drop zones while dragging files over the island (`NSSharingService`)
 - [ ] Camera mirror (AVFoundation)
 - [ ] Clipboard history
 - [ ] Download finished / AirPods connected alerts

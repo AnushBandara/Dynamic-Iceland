@@ -8,6 +8,7 @@ struct SettingsView: View {
     @AppStorage(Battery.enabledKey) private var batteryAlertsEnabled = true
     @AppStorage(Agenda.enabledKey) private var calendarEnabled = true
     @AppStorage(Countdown.enabledKey) private var timerEnabled = true
+    @AppStorage(DropZone.airDropKey) private var airDropEnabled = true
     @AppStorage(Shelf.keepKey) private var keepShelf = true
     @State private var launchAtLogin = SMAppService.mainApp.status == .enabled
 
@@ -36,6 +37,10 @@ struct SettingsView: View {
             Toggle(isOn: $timerEnabled) {
                 Text("Timer")
                 Text("5 / 15 / 25 minute countdown beside the notch.")
+            }
+            Toggle(isOn: $airDropEnabled) {
+                Text("AirDrop drop zone")
+                Text("Drop files on the notch to send them with AirDrop.")
             }
             Toggle("File shelf", isOn: $shelfEnabled)
             Toggle("Keep shelf files after restart", isOn: $keepShelf).disabled(!shelfEnabled)

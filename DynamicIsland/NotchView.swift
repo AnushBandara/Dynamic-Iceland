@@ -10,8 +10,10 @@ struct NotchView: View {
     let countdown: Countdown
     @State private var isHovering = false
     @State private var isDropTargeted = false
+    @State private var dropZone: DropZone?
     @AppStorage("useLiquidGlass") private var useLiquidGlass = false
     @AppStorage(Shelf.enabledKey) private var shelfEnabled = true
+    @AppStorage(DropZone.airDropKey) private var airDropEnabled = true
     @AppStorage(Countdown.enabledKey) private var timerEnabled = true
 
     var body: some View {
@@ -29,13 +31,20 @@ struct NotchView: View {
         let size = isExpanded ? expandedSize : CGSize(width: notchSize.width + wings, height: notchSize.height)
         let radius: CGFloat = isExpanded ? 24 : 10
         let shape = UnevenRoundedRectangle(bottomLeadingRadius: radius, bottomTrailingRadius: radius)
+        let dropZones = DropZone.allCases.filter { $0 == .shelf ? shelfEnabled : airDropEnabled }
 
         ZStack { // not Group: an empty Group drops its modifiers, leaving no island to hover
             if isExpanded {
-                HStack(spacing: 16) {
-                    NowPlayingView(nowPlaying: nowPlaying)
-                    if shelfEnabled {
-                        ShelfView(shelf: shelf, isDropTargeted: isDropTargeted).frame(width: 200)
+                Group {
+                    if isDropTargeted {
+                        DropZonesView(zones: dropZones, highlighted: dropZone)
+                    } else {
+                        HStack(spacing: 16) {
+                            NowPlayingView(nowPlaying: nowPlaying)
+                            if shelfEnabled {
+                                ShelfView(shelf: shelf).frame(width: 200)
+                            }
+                        }
                     }
                 }
                 .padding(EdgeInsets(top: notchSize.height + 8, leading: 24, bottom: 16, trailing: 24))
@@ -76,7 +85,11 @@ struct NotchView: View {
         .clipShape(shape) // the growing shape reveals the full-size content instead of it overflowing
         .contentShape(shape)
         .onHover { isHovering = $0 }
-        .shelfDropDestination(shelfEnabled ? shelf : nil, isTargeted: $isDropTargeted)
+        .islandDropTarget(zones: dropZones, delegate: IslandDropDelegate(
+            zones: dropZones, width: size.width, isTargeted: $isDropTargeted, zone: $dropZone
+        ) { zone, urls in
+            zone == .shelf ? shelf.add(urls) : AirDrop.send(urls)
+        })
         .animation(.spring(response: 0.35, dampingFraction: 0.8), value: size)
         .environment(\.colorScheme, .dark)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
@@ -93,16 +106,13 @@ private extension View {
         }
     }
 
-    /// No shelf: don't register for drags at all, so the notch ignores dragged files.
+    /// No drop zones enabled: don't register for drags at all, so the notch ignores dragged files.
     @ViewBuilder
-    func shelfDropDestination(_ shelf: Shelf?, isTargeted: Binding<Bool>) -> some View {
-        if let shelf {
-            dropDestination(for: URL.self) { urls, _ in
-                shelf.add(urls)
-                return true
-            } isTargeted: { isTargeted.wrappedValue = $0 }
-        } else {
+    func islandDropTarget(zones: [DropZone], delegate: IslandDropDelegate) -> some View {
+        if zones.isEmpty {
             self
+        } else {
+            onDrop(of: [.fileURL], delegate: delegate)
         }
     }
 }
