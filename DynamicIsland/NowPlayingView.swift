@@ -3,6 +3,7 @@ import SwiftUI
 /// Expanded island: artwork, track info, progress and controls.
 struct NowPlayingView: View {
     let nowPlaying: NowPlaying
+    @State private var scrubbing: TimeInterval? // position under the pointer while dragging the bar
 
     var body: some View {
         if nowPlaying.title == nil {
@@ -53,10 +54,31 @@ struct NowPlayingView: View {
 
     private var progress: some View {
         TimelineView(.periodic(from: .now, by: 1)) { context in
-            let elapsed = nowPlaying.elapsed(at: context.date)
+            let elapsed = scrubbing ?? nowPlaying.elapsed(at: context.date)
             VStack(spacing: 2) {
-                Capsule().fill(.white.opacity(0.2)).frame(height: 4)
-                    .overlay { Capsule().fill(.white).scaleEffect(x: elapsed / nowPlaying.duration, anchor: .leading) }
+                // Click or drag to scrub; seeks once on release. Taller than the bar so it's easy to hit.
+                GeometryReader { geometry in
+                    Capsule().fill(.white.opacity(0.2)).frame(height: scrubbing == nil ? 4 : 6)
+                        .overlay { Capsule().fill(.white).scaleEffect(x: elapsed / nowPlaying.duration, anchor: .leading) }
+                        .frame(maxHeight: .infinity)
+                        .contentShape(Rectangle())
+                        .gesture(DragGesture(minimumDistance: 0)
+                            .onChanged { value in
+                                scrubbing = nowPlaying.duration * min(max(value.location.x / geometry.size.width, 0), 1)
+                            }
+                            .onEnded { _ in
+                                if let scrubbing { nowPlaying.seek(to: scrubbing) }
+                                scrubbing = nil
+                            })
+                }
+                .frame(height: 12)
+                .accessibilityElement()
+                .accessibilityLabel("Playback position")
+                .accessibilityValue(Duration.seconds(elapsed).formatted(.time(pattern: .minuteSecond)))
+                .accessibilityAdjustableAction { direction in
+                    let step: TimeInterval = direction == .increment ? 15 : -15
+                    nowPlaying.seek(to: min(max(elapsed + step, 0), nowPlaying.duration))
+                }
                 HStack {
                     Text(Duration.seconds(elapsed).formatted(.time(pattern: .minuteSecond)))
                     Spacer()
