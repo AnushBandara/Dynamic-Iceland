@@ -13,7 +13,7 @@ cd "$(dirname "$0")/.."
 
 : "${TEAM_ID:?Set TEAM_ID to the Apple Developer team ID}"
 NOTARY_PROFILE=${NOTARY_PROFILE:-dynamic-island}
-REPO=${REPO:-oleeai/dynamic-island} # must match SUFeedURL in project.yml
+REPO=${REPO:-AnushBandara/Dynamic-Iceland} # must match SUFeedURL in project.yml
 VERSION=$(sed -n 's/.*MARKETING_VERSION: "\(.*\)"/\1/p' project.yml)
 DIST=dist/$VERSION
 

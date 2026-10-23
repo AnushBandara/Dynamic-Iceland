@@ -33,7 +33,7 @@
 	<key>SUEnableAutomaticChecks</key>
 	<true/>
 	<key>SUFeedURL</key>
-	<string>https://github.com/oleeai/dynamic-island/releases/latest/download/appcast.xml</string>
+	<string>https://github.com/AnushBandara/Dynamic-Iceland/releases/latest/download/appcast.xml</string>
 	<key>SUPublicEDKey</key>
 	<string>UcGInE0XptcaIUUTw7nZrP1WS2Ao1Qp3T7u68Jrr9C0=</string>
 </dict>
