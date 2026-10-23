@@ -125,8 +125,8 @@ struct NotchView: View {
         .onHover(perform: hoverChanged)
         .islandDropTarget(zones: dropZones, delegate: IslandDropDelegate(
             zones: dropZones, width: size.width, isTargeted: $isDropTargeted, zone: $dropZone
-        ) { zone, urls in
-            zone == .shelf ? shelf.add(urls) : AirDrop.send(urls)
+        ) { zone, items in
+            zone == .shelf ? shelf.add(items) : AirDrop.send(items)
         })
         .animation(Self.animation(opening: isExpanded, reduceMotion: reduceMotion), value: size)
         .environment(\.colorScheme, .dark)
@@ -197,7 +197,7 @@ private extension View {
         if zones.isEmpty {
             self
         } else {
-            onDrop(of: [.fileURL], delegate: delegate)
+            onDrop(of: DroppedItem.types, delegate: delegate)
         }
     }
 }

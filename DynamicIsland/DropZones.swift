@@ -18,12 +18,48 @@ enum DropZone: CaseIterable, Identifiable {
     }
 }
 
+/// Something dragged onto the island: a file, a web link, or a piece of text.
+enum DroppedItem: Equatable {
+    case file(URL), link(URL), text(String)
+
+    static let types: [UTType] = [.fileURL, .url, .plainText]
+
+    /// File first (a file URL is also a URL), then link, then text, since browsers offer a link as all three.
+    @MainActor static func load(_ provider: NSItemProvider) async -> DroppedItem? {
+        if provider.hasItemConformingToTypeIdentifier(UTType.fileURL.identifier) {
+            return await provider.loadURL().map(DroppedItem.file)
+        }
+        if provider.hasItemConformingToTypeIdentifier(UTType.url.identifier) {
+            return await provider.loadURL().map(DroppedItem.link)
+        }
+        return await withCheckedContinuation { continuation in
+            _ = provider.loadObject(ofClass: String.self) { text, _ in continuation.resume(returning: text.map(DroppedItem.text)) }
+        }
+    }
+}
+
+private extension NSItemProvider {
+    @MainActor func loadURL() async -> URL? {
+        await withCheckedContinuation { continuation in
+            _ = loadObject(ofClass: URL.self) { url, _ in continuation.resume(returning: url) }
+        }
+    }
+}
+
 enum AirDrop {
-    /// Opens the AirDrop picker with the files; nothing is sent until a device is chosen.
-    @MainActor static func send(_ urls: [URL]) {
-        guard !urls.isEmpty, let service = NSSharingService(named: .sendViaAirDrop), service.canPerform(withItems: urls) else { return }
+    /// Opens the AirDrop picker; nothing is sent until a device is chosen. Links go as links, so they
+    /// open in the browser on the other device.
+    @MainActor static func send(_ items: [DroppedItem]) {
+        let objects: [Any] = items.map { item in
+            switch item {
+            case .file(let url), .link(let url): url
+            case .text(let text): text
+            }
+        }
+        guard !objects.isEmpty, let service = NSSharingService(named: .sendViaAirDrop), service.canPerform(withItems: objects)
+        else { return }
         NSApp.activate() // the picker only comes to the front for the active app
-        service.perform(withItems: urls)
+        service.perform(withItems: objects)
     }
 }
 
@@ -34,9 +70,9 @@ struct IslandDropDelegate: DropDelegate {
     let width: CGFloat
     @Binding var isTargeted: Bool
     @Binding var zone: DropZone?
-    let onDrop: @MainActor (DropZone, [URL]) -> Void
+    let onDrop: @MainActor (DropZone, [DroppedItem]) -> Void
 
-    func validateDrop(info: DropInfo) -> Bool { !zones.isEmpty && info.hasItemsConforming(to: [.fileURL]) }
+    func validateDrop(info: DropInfo) -> Bool { !zones.isEmpty && info.hasItemsConforming(to: DroppedItem.types) }
 
     func dropEntered(info: DropInfo) {
         isTargeted = true
@@ -55,17 +91,15 @@ struct IslandDropDelegate: DropDelegate {
 
     func performDrop(info: DropInfo) -> Bool {
         guard let target = DropZone.at(x: info.location.x, width: width, zones: zones) else { return false }
-        let providers = info.itemProviders(for: [.fileURL])
+        let providers = info.itemProviders(for: DroppedItem.types)
         isTargeted = false
         zone = nil
         Task {
-            var urls: [URL] = []
+            var items: [DroppedItem] = []
             for provider in providers {
-                if let url = await withCheckedContinuation({ continuation in
-                    _ = provider.loadObject(ofClass: URL.self) { url, _ in continuation.resume(returning: url) }
-                }) { urls.append(url) }
+                if let item = await DroppedItem.load(provider) { items.append(item) }
             }
-            onDrop(target, urls)
+            onDrop(target, items)
         }
         return true
     }
