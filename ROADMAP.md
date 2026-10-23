@@ -13,3 +13,5 @@
 - [x] Clipboard history: last 20 copied texts, click to copy again, shares the shelf column. Memory only, skips concealed (password manager) copies
 - [x] Download finished / headphones connected alerts: watches ~/Downloads (skips .crdownload etc.), Bluetooth audio connect with battery via private IOBluetoothDevice properties
 - [x] Focus alerts: mode icon + On / Off when a Focus changes. No public API: reads ~/Library/DoNotDisturb/DB (Full Disk Access)
+- [x] Notes, to-dos and Shortcuts tabs in the right column; pin the island open (also while typing)
+- [x] Auto-updates (Sparkle, from GitHub Releases) and a Developer ID / notarization release script (`scripts/release.sh`). Needs a Developer ID certificate and the GitHub repo before the first release
