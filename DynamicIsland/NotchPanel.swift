@@ -7,10 +7,12 @@ final class NotchPanel: NSPanel {
     static let expandedSize = CGSize(width: 640, height: 180)
     private let nowPlaying: NowPlaying
     private let shelf: Shelf
+    private let hud: SystemHUD
 
-    init(nowPlaying: NowPlaying, shelf: Shelf) {
+    init(nowPlaying: NowPlaying, shelf: Shelf, hud: SystemHUD) {
         self.nowPlaying = nowPlaying
         self.shelf = shelf
+        self.hud = hud
         super.init(contentRect: .zero, styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
         isOpaque = false
         backgroundColor = .clear
@@ -29,7 +31,7 @@ final class NotchPanel: NSPanel {
         setFrame(CGRect(x: screen.frame.midX - size.width / 2, y: screen.frame.maxY - size.height,
                         width: size.width, height: size.height), display: true)
 
-        let hosting = HostingView(rootView: NotchView(notchSize: screen.notchSize, nowPlaying: nowPlaying, shelf: shelf))
+        let hosting = HostingView(rootView: NotchView(notchSize: screen.notchSize, nowPlaying: nowPlaying, shelf: shelf, hud: hud))
         hosting.sizingOptions = []
         contentView = hosting
     }
