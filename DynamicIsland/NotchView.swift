@@ -5,6 +5,7 @@ struct NotchView: View {
     let nowPlaying: NowPlaying
     let shelf: Shelf
     let hud: SystemHUD
+    let battery: Battery
     @State private var isHovering = false
     @State private var isDropTargeted = false
     @AppStorage("useLiquidGlass") private var useLiquidGlass = false
@@ -14,10 +15,11 @@ struct NotchView: View {
         // Dragging a file onto the notch opens it too: hover doesn't fire during a drag.
         let isExpanded = isHovering || isDropTargeted
         let showsHUD = !isExpanded && hud.isVisible
-        let showsActivity = !isExpanded && !showsHUD && nowPlaying.isPlaying
+        let showsBattery = !isExpanded && !showsHUD && battery.alert != nil
+        let showsActivity = !isExpanded && !showsHUD && !showsBattery && nowPlaying.isPlaying
         let expandedSize = CGSize(width: shelfEnabled ? NotchPanel.expandedSize.width : 520,
                                   height: NotchPanel.expandedSize.height)
-        let wings: CGFloat = showsHUD ? 180 : showsActivity ? notchSize.height * 2 : 0
+        let wings: CGFloat = showsHUD || showsBattery ? 180 : showsActivity ? notchSize.height * 2 : 0
         let size = isExpanded ? expandedSize : CGSize(width: notchSize.width + wings, height: notchSize.height)
         let radius: CGFloat = isExpanded ? 24 : 10
         let shape = UnevenRoundedRectangle(bottomLeadingRadius: radius, bottomTrailingRadius: radius)
@@ -36,6 +38,10 @@ struct NotchView: View {
             } else if showsHUD {
                 CompactHUDView(hud: hud, height: notchSize.height)
                     .frame(maxHeight: .infinity) // centre vertically; the island aligns content to the top
+                    .transition(.opacity)
+            } else if showsBattery {
+                CompactBatteryView(battery: battery)
+                    .frame(maxHeight: .infinity)
                     .transition(.opacity)
             } else if showsActivity {
                 CompactNowPlayingView(nowPlaying: nowPlaying, height: notchSize.height)

@@ -5,6 +5,7 @@ struct SettingsView: View {
     @AppStorage("useLiquidGlass") private var useLiquidGlass = false
     @AppStorage(Shelf.enabledKey) private var shelfEnabled = true
     @AppStorage(SystemHUD.enabledKey) private var hudEnabled = true
+    @AppStorage(Battery.enabledKey) private var batteryAlertsEnabled = true
     @AppStorage(Shelf.keepKey) private var keepShelf = true
     @State private var launchAtLogin = SMAppService.mainApp.status == .enabled
 
@@ -21,6 +22,10 @@ struct SettingsView: View {
             Toggle(isOn: $hudEnabled) {
                 Text("Volume & brightness HUD")
                 Text("Replaces the macOS popup. Needs Accessibility permission.")
+            }
+            Toggle(isOn: $batteryAlertsEnabled) {
+                Text("Battery alerts")
+                Text("Shows when the charger connects and at 20% / 10%.")
             }
             Toggle("File shelf", isOn: $shelfEnabled)
             Toggle("Keep shelf files after restart", isOn: $keepShelf).disabled(!shelfEnabled)
