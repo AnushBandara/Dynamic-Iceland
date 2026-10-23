@@ -1,0 +1,90 @@
+import AppKit
+import Observation
+
+/// System-wide now playing (Music, Spotify, YouTube in browsers…) via the bundled
+/// mediaremote-adapter. Apps lost MediaRemote access in macOS 15.4; /usr/bin/perl still has it.
+@MainActor @Observable
+final class NowPlaying {
+    enum Command: Int { case togglePlayPause = 2, nextTrack = 4, previousTrack = 5 }
+
+    private(set) var title: String?
+    private(set) var artist: String?
+    private(set) var isPlaying = false
+    private(set) var appURL: URL?
+    private var album: String?
+    private var receivedArtwork: NSImage?
+    private var artworkTitle: String?
+    private var artworkAlbum: String?
+    private(set) var duration: TimeInterval = 0
+    private var elapsedAtTimestamp: TimeInterval = 0
+    private var timestamp = Date()
+    private var rate = 1.0
+
+    @ObservationIgnored private var info: [String: Any] = [:]
+    @ObservationIgnored private var stream: Process?
+
+    func start() {
+        stream = run("stream", "--micros", "--debounce=50")
+        guard let output = (stream?.standardOutput as? Pipe)?.fileHandleForReading else { return }
+        // Per the adapter docs, a stream that exits is not restarted.
+        Task.detached {
+            do {
+                for try await line in output.bytes.lines { await self.apply(line) }
+            } catch {
+                print("Now playing stream ended: \(error)")
+            }
+        }
+    }
+
+    func stop() { stream?.terminate() }
+
+    func send(_ command: Command) { run("send", String(command.rawValue)) }
+
+    /// Chromium browsers can keep the previous tab's artwork when the playing tab changes,
+    /// so artwork that didn't change with the track is stale, unless it's the same album.
+    var artwork: NSImage? {
+        artworkTitle == title || (album?.isEmpty == false && album == artworkAlbum) ? receivedArtwork : nil
+    }
+
+    func elapsed(at date: Date) -> TimeInterval {
+        guard isPlaying else { return elapsedAtTimestamp }
+        return min(duration, elapsedAtTimestamp + date.timeIntervalSince(timestamp) * rate)
+    }
+
+    /// Applies one `stream` line: a full payload, or a diff where `null` removes a key.
+    func apply(_ line: String) {
+        guard let message = try? JSONSerialization.jsonObject(with: Data(line.utf8)) as? [String: Any],
+              let payload = message["payload"] as? [String: Any] else { return }
+        let isDiff = message["diff"] as? Bool == true
+        if !isDiff { info = [:] }
+        for (key, value) in payload { info[key] = value is NSNull ? nil : value }
+
+        title = info["title"] as? String
+        artist = info["artist"] as? String
+        album = info["album"] as? String
+        isPlaying = info["playing"] as? Bool ?? false
+        duration = (info["durationMicros"] as? Double ?? 0) / 1e6
+        elapsedAtTimestamp = (info["elapsedTimeMicros"] as? Double ?? 0) / 1e6
+        timestamp = (info["timestampEpochMicros"] as? Double).map { Date(timeIntervalSince1970: $0 / 1e6) } ?? .now
+        rate = info["playbackRate"] as? Double ?? 1
+        let bundleID = info["parentApplicationBundleIdentifier"] as? String ?? info["bundleIdentifier"] as? String
+        appURL = bundleID.flatMap { NSWorkspace.shared.urlForApplication(withBundleIdentifier: $0) }
+        if !isDiff || payload["artworkData"] != nil {
+            receivedArtwork = (info["artworkData"] as? String).flatMap { Data(base64Encoded: $0) }.flatMap(NSImage.init(data:))
+            artworkTitle = title
+            artworkAlbum = album
+        }
+    }
+
+    @discardableResult
+    private func run(_ arguments: String...) -> Process? {
+        guard let script = Bundle.main.path(forResource: "mediaremote-adapter", ofType: "pl"),
+              let frameworks = Bundle.main.privateFrameworksPath else { return nil }
+        let process = Process()
+        process.executableURL = URL(filePath: "/usr/bin/perl")
+        process.arguments = [script, frameworks + "/MediaRemoteAdapter.framework"] + arguments
+        process.standardOutput = Pipe()
+        guard (try? process.run()) != nil else { return nil }
+        return process
+    }
+}

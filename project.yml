@@ -1,0 +1,67 @@
+name: DynamicIsland
+options:
+  bundleIdPrefix: ai.olee
+  deploymentTarget:
+    macOS: "14.0"
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+targets:
+  DynamicIsland:
+    type: application
+    platform: macOS
+    sources:
+      - DynamicIsland
+      - path: Vendor/mediaremote-adapter/bin/mediaremote-adapter.pl
+        buildPhase: resources
+    dependencies:
+      # Embedded but not linked: only /usr/bin/perl loads it (see NowPlaying.swift)
+      - target: MediaRemoteAdapter
+        embed: true
+        link: false
+    info:
+      path: DynamicIsland/Info.plist
+      properties:
+        CFBundleDisplayName: Dynamic Island
+        LSUIElement: true # no Dock icon, lives in the menu bar
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: ai.olee.dynamicisland
+        ENABLE_HARDENED_RUNTIME: YES # required for notarization (direct download, no sandbox)
+        CODE_SIGN_STYLE: Automatic
+    scheme:
+      testTargets: [DynamicIslandTests]
+
+  DynamicIslandTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources: [DynamicIslandTests]
+    dependencies:
+      - target: DynamicIsland
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+
+  # github.com/ungive/mediaremote-adapter @ 0e82bf1 (BSD-3), built here instead of via CMake
+  MediaRemoteAdapter:
+    type: framework
+    platform: macOS
+    sources:
+      - path: Vendor/mediaremote-adapter/src
+        excludes: ["test/*.m"]
+    dependencies:
+      - sdk: AppKit.framework
+      - sdk: ImageIO.framework
+      - sdk: UniformTypeIdentifiers.framework
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: ai.olee.dynamicisland.MediaRemoteAdapter
+        GENERATE_INFOPLIST_FILE: YES
+        HEADER_SEARCH_PATHS: ["$(SRCROOT)/Vendor/mediaremote-adapter/src", "$(SRCROOT)/Vendor/mediaremote-adapter/include"]
+        CLANG_ENABLE_OBJC_ARC: YES
+        GCC_SYMBOLS_PRIVATE_EXTERN: NO # perl looks up adapter_* symbols by name
+        GCC_WARN_INHIBIT_ALL_WARNINGS: YES
+        DEFINES_MODULE: NO
+        SKIP_INSTALL: YES
