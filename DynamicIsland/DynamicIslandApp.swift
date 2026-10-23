@@ -22,8 +22,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let battery = Battery()
     private let agenda = Agenda()
     private let countdown = Countdown()
+    private let mirror = CameraMirror()
     private lazy var panel = NotchPanel(nowPlaying: nowPlaying, shelf: shelf, hud: hud, battery: battery,
-                                        agenda: agenda, countdown: countdown)
+                                        agenda: agenda, countdown: countdown, mirror: mirror)
 
     func applicationWillTerminate(_ notification: Notification) {
         nowPlaying.stop()

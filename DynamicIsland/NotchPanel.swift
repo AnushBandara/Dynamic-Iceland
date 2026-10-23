@@ -4,16 +4,19 @@ import SwiftUI
 /// Borderless, transparent panel pinned over the notch. Sized for the expanded
 /// island; transparent pixels let clicks pass through to the menu bar.
 final class NotchPanel: NSPanel {
-    static let expandedSize = CGSize(width: 640, height: 180)
+    static let expandedSize = CGSize(width: 756, height: 180) // widest island: shelf and mirror on
     private let nowPlaying: NowPlaying
     private let shelf: Shelf
     private let hud: SystemHUD
     private let battery: Battery
     private let agenda: Agenda
     private let countdown: Countdown
+    private let mirror: CameraMirror
 
-    init(nowPlaying: NowPlaying, shelf: Shelf, hud: SystemHUD, battery: Battery, agenda: Agenda, countdown: Countdown) {
+    init(nowPlaying: NowPlaying, shelf: Shelf, hud: SystemHUD, battery: Battery, agenda: Agenda,
+         countdown: Countdown, mirror: CameraMirror) {
         self.countdown = countdown
+        self.mirror = mirror
         self.nowPlaying = nowPlaying
         self.shelf = shelf
         self.hud = hud
@@ -37,7 +40,7 @@ final class NotchPanel: NSPanel {
         setFrame(CGRect(x: screen.frame.midX - size.width / 2, y: screen.frame.maxY - size.height,
                         width: size.width, height: size.height), display: true)
 
-        let hosting = HostingView(rootView: NotchView(notchSize: screen.notchSize, nowPlaying: nowPlaying, shelf: shelf, hud: hud, battery: battery, agenda: agenda, countdown: countdown))
+        let hosting = HostingView(rootView: NotchView(notchSize: screen.notchSize, nowPlaying: nowPlaying, shelf: shelf, hud: hud, battery: battery, agenda: agenda, countdown: countdown, mirror: mirror))
         hosting.sizingOptions = []
         contentView = hosting
     }

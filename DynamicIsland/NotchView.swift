@@ -8,12 +8,14 @@ struct NotchView: View {
     let battery: Battery
     let agenda: Agenda
     let countdown: Countdown
+    let mirror: CameraMirror
     @State private var isHovering = false
     @State private var isDropTargeted = false
     @State private var dropZone: DropZone?
     @AppStorage("useLiquidGlass") private var useLiquidGlass = false
     @AppStorage(Shelf.enabledKey) private var shelfEnabled = true
     @AppStorage(DropZone.airDropKey) private var airDropEnabled = true
+    @AppStorage(CameraMirror.enabledKey) private var mirrorEnabled = true
     @AppStorage(Countdown.enabledKey) private var timerEnabled = true
 
     var body: some View {
@@ -23,7 +25,8 @@ struct NotchView: View {
         let showsBattery = !isExpanded && !showsHUD && battery.alert != nil
         let showsCountdown = !isExpanded && !showsHUD && !showsBattery && (countdown.isActive || countdown.isFinished)
         let showsActivity = !isExpanded && !showsHUD && !showsBattery && !showsCountdown && nowPlaying.isPlaying
-        let expandedSize = CGSize(width: shelfEnabled ? NotchPanel.expandedSize.width : 520,
+        // Wider when the shelf (+120) or the mirror tile (+116) is on.
+        let expandedSize = CGSize(width: 520 + (shelfEnabled ? 120 : 0) + (mirrorEnabled ? 116 : 0),
                                   height: NotchPanel.expandedSize.height)
         let cornerWidth = (expandedSize.width - notchSize.width) / 2 - 32 // strips beside the notch
         // Each side only as wide as its content: HUD bar / battery percentage / time, or artwork.
@@ -40,6 +43,9 @@ struct NotchView: View {
                         DropZonesView(zones: dropZones, highlighted: dropZone)
                     } else {
                         HStack(spacing: 16) {
+                            if mirrorEnabled {
+                                MirrorView(mirror: mirror)
+                            }
                             NowPlayingView(nowPlaying: nowPlaying)
                             if shelfEnabled {
                                 ShelfView(shelf: shelf).frame(width: 200)
