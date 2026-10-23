@@ -51,7 +51,11 @@ ditto "$APP" "$DIST/dmg-root/DynamicIsland.app"
 ln -s /Applications "$DIST/dmg-root/Applications"
 hdiutil create -quiet -volname "Dynamic Island" -srcfolder "$DIST/dmg-root" -fs HFS+ -format UDZO "$DMG"
 codesign --timestamp -s "$IDENTITY" "$DMG"
-xcrun notarytool submit "$DMG" --keychain-profile "$NOTARY_PROFILE" --wait
+ID=$(xcrun notarytool submit "$DMG" --keychain-profile "$NOTARY_PROFILE" --output-format json | sed -n 's/.*"id": *"\([^"]*\)".*/\1/p')
+# Waiting can time out on a slow connection while Apple is still checking, so wait again.
+for _ in 1 2 3 4 5; do xcrun notarytool wait "$ID" --keychain-profile "$NOTARY_PROFILE" && break; done
+xcrun notarytool info "$ID" --keychain-profile "$NOTARY_PROFILE" | grep -q "status: Accepted" \
+    || { xcrun notarytool log "$ID" --keychain-profile "$NOTARY_PROFILE"; exit 1; }
 xcrun stapler staple "$DMG"
 xcrun stapler staple "$APP"
 spctl --assess --type execute -v "$APP"
