@@ -1,6 +1,6 @@
 name: DynamicIsland
 options:
-  bundleIdPrefix: ai.olee
+  bundleIdPrefix: io.github.anushbandara
   deploymentTarget:
     macOS: "14.0"
 packages:
@@ -51,7 +51,7 @@ targets:
         com.apple.security.device.camera: true # likewise for the camera mirror
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: ai.olee.dynamicisland
+        PRODUCT_BUNDLE_IDENTIFIER: io.github.anushbandara.dynamicisland
         ENABLE_HARDENED_RUNTIME: YES # required for notarization (direct download, no sandbox)
     scheme:
       testTargets: [DynamicIslandTests]
@@ -79,7 +79,7 @@ targets:
       - sdk: UniformTypeIdentifiers.framework
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: ai.olee.dynamicisland.MediaRemoteAdapter
+        PRODUCT_BUNDLE_IDENTIFIER: io.github.anushbandara.dynamicisland.MediaRemoteAdapter
         GENERATE_INFOPLIST_FILE: YES
         HEADER_SEARCH_PATHS: ["$(SRCROOT)/Vendor/mediaremote-adapter/src", "$(SRCROOT)/Vendor/mediaremote-adapter/include"]
         CLANG_ENABLE_OBJC_ARC: YES

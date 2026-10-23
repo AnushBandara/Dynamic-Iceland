@@ -15,7 +15,7 @@ final class CameraMirror {
     @ObservationIgnored let previewLayer: AVCaptureVideoPreviewLayer
     @ObservationIgnored private let session = AVCaptureSession()
     /// Serial, so configure / start / stop never overlap even with fast clicks.
-    @ObservationIgnored private let queue = DispatchQueue(label: "ai.olee.dynamicisland.camera")
+    @ObservationIgnored private let queue = DispatchQueue(label: "io.github.anushbandara.dynamicisland.camera")
     @ObservationIgnored private var wantsOn = false
 
     init() {
