@@ -13,7 +13,9 @@ struct NotchView: View {
     let clipboard: Clipboard
     let notices: Notices
     @Environment(\.openSettings) private var openSettings
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var isHovering = false
+    @State private var hoverIntent: Task<Void, Never>?
     @State private var isDropTargeted = false
     @State private var dropZone: DropZone?
     @State private var showsClipboard = false
@@ -117,18 +119,38 @@ struct NotchView: View {
         .islandBackground(shape, glass: useLiquidGlass)
         .clipShape(shape) // the growing shape reveals the full-size content instead of it overflowing
         .contentShape(shape)
-        .onHover { isHovering = $0 }
+        .onHover(perform: hoverChanged)
         .islandDropTarget(zones: dropZones, delegate: IslandDropDelegate(
             zones: dropZones, width: size.width, isTargeted: $isDropTargeted, zone: $dropZone
         ) { zone, urls in
             zone == .shelf ? shelf.add(urls) : AirDrop.send(urls)
         })
-        .animation(.spring(response: 0.35, dampingFraction: 0.8), value: size)
+        .animation(Self.animation(opening: isExpanded, reduceMotion: reduceMotion), value: size)
         .environment(\.colorScheme, .dark)
         .onReceive(NotificationCenter.default.publisher(for: SettingsView.openRequest)) { _ in
             SettingsView.open(openSettings)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+    }
+
+    /// Opens only after the pointer rests on the notch briefly, so crossing the top edge on the way to
+    /// a menu or tab doesn't pop the island open. Leaving closes right away.
+    private func hoverChanged(_ inside: Bool) {
+        hoverIntent?.cancel()
+        guard inside else { isHovering = false; return }
+        hoverIntent = Task {
+            try? await Task.sleep(for: Self.hoverDelay)
+            if !Task.isCancelled { isHovering = true }
+        }
+    }
+
+    static let hoverDelay = Duration.milliseconds(120)
+
+    /// Opening is a little slower and springier than closing, which should feel instant.
+    /// Reduce Motion swaps the spring for a short ease.
+    static func animation(opening: Bool, reduceMotion: Bool) -> Animation {
+        if reduceMotion { return .easeInOut(duration: 0.12) }
+        return opening ? .spring(duration: 0.3, bounce: 0.15) : .spring(duration: 0.18, bounce: 0)
     }
 
     /// Shelf and clipboard share one column, with a switch when both are on.
