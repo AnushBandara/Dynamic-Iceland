@@ -116,6 +116,11 @@ private struct IslandSettings: View {
     @AppStorage(Countdown.enabledKey) private var timerEnabled = true
     @AppStorage(CameraMirror.enabledKey) private var mirrorEnabled = true
     @AppStorage(Clipboard.enabledKey) private var clipboardEnabled = true
+    @AppStorage(TrayTab.notes.enabledKey) private var notesEnabled = true
+    @AppStorage(TrayTab.todos.enabledKey) private var todosEnabled = true
+    @AppStorage(TrayTab.shortcuts.enabledKey) private var shortcutsEnabled = true
+    @AppStorage(ShortcutsRunner.pinnedKey) private var pinnedShortcuts = ""
+    @State private var allShortcuts: [String]?
     @AppStorage(Shelf.enabledKey) private var shelfEnabled = true
     @AppStorage(Shelf.keepKey) private var keepShelf = true
     @AppStorage(DropZone.airDropKey) private var airDropEnabled = true
@@ -145,6 +150,37 @@ private struct IslandSettings: View {
                            detail: "Your last 20 copied texts. Click one to copy it again. Kept in memory only; password manager copies are skipped.",
                            isOn: $clipboardEnabled)
             }
+            Section {
+                FeatureRow(title: "Notes", icon: "note.text", color: .yellow,
+                           detail: "A scratch note in the island's right column, saved as you type. The island stays open while you type; press Esc or unpin to close it.",
+                           isOn: $notesEnabled)
+                FeatureRow(title: "To-dos", icon: "checklist", color: .orange,
+                           detail: "A quick checklist. Type and press Return to add; click the circle to tick it off.",
+                           isOn: $todosEnabled)
+                FeatureRow(title: "Shortcuts", icon: "bolt.fill", color: .purple,
+                           detail: "Run your favourite Apple Shortcuts with one click. Choose which ones below.",
+                           isOn: $shortcutsEnabled)
+                if shortcutsEnabled {
+                    if let allShortcuts {
+                        if allShortcuts.isEmpty {
+                            Text("No shortcuts found. Make some in the Shortcuts app.")
+                                .foregroundStyle(.secondary)
+                        }
+                        ForEach(allShortcuts, id: \.self) { name in
+                            Toggle(name, isOn: Binding(
+                                get: { ShortcutsRunner.pinned(pinnedShortcuts).contains(name) },
+                                set: { _ in pinnedShortcuts = ShortcutsRunner.toggling(name, in: pinnedShortcuts) }))
+                                .padding(.leading, 38)
+                        }
+                    } else {
+                        ProgressView().controlSize(.small)
+                    }
+                }
+            } header: {
+                Text("Tools")
+            } footer: {
+                Text("Shelf, Clipboard, Notes, To-dos and Shortcuts share the island's right column, with tabs to switch.")
+            }
             Section("Files") {
                 FeatureRow(title: "File shelf", icon: "tray.full.fill", color: .blue,
                            detail: "Drop files on the notch to hold them, then drag them out wherever you need them.",
@@ -159,6 +195,7 @@ private struct IslandSettings: View {
             }
         }
         .formStyle(.grouped)
+        .task { allShortcuts = await ShortcutsRunner.all() }
     }
 }
 

@@ -5,7 +5,7 @@ import Observation
 /// and restored at launch when "Keep shelf files after restart" is on.
 @MainActor @Observable
 final class Shelf {
-    static let enabledKey = "shelfEnabled"
+    nonisolated static let enabledKey = "shelfEnabled"
     static let keepKey = "keepShelfAfterRestart"
     private static let storageKey = "shelfBookmarks"
 

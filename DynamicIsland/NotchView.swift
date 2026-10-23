@@ -20,10 +20,13 @@ struct NotchView: View {
     @State private var hoverIntent: Task<Void, Never>?
     @State private var isDropTargeted = false
     @State private var dropZone: DropZone?
-    @State private var showsClipboard = false
     @AppStorage("useLiquidGlass") private var useLiquidGlass = false
     @AppStorage(Shelf.enabledKey) private var shelfEnabled = true
     @AppStorage(Clipboard.enabledKey) private var clipboardEnabled = true
+    @AppStorage(TrayTab.notes.enabledKey) private var notesEnabled = true
+    @AppStorage(TrayTab.todos.enabledKey) private var todosEnabled = true
+    @AppStorage(TrayTab.shortcuts.enabledKey) private var shortcutsEnabled = true
+    @AppStorage(TrayTab.selectedKey) private var selectedTab = TrayTab.shelf
     @AppStorage(NowPlaying.activityKey) private var activityEnabled = true
     @AppStorage(DropZone.airDropKey) private var airDropEnabled = true
     @AppStorage(CameraMirror.enabledKey) private var mirrorEnabled = true
@@ -31,7 +34,7 @@ struct NotchView: View {
 
     var body: some View {
         // Dragging a file onto the notch opens it too: hover doesn't fire during a drag.
-        let isExpanded = isHovering || isDropTargeted || hotKey.isOpen
+        let isExpanded = isHovering || isDropTargeted || hotKey.isOpen || hotKey.isPinned
         let showsHUD = !isExpanded && hud.isVisible
         let showsBattery = !isExpanded && !showsHUD && battery.alert != nil
         let notice = isExpanded || showsHUD || showsBattery ? nil : notices.current
@@ -40,8 +43,8 @@ struct NotchView: View {
         // The always-on now playing hides in full screen (e.g. over a video); alerts still show.
         let showsActivity = !isExpanded && !fullScreen.isActive && !showsHUD && !showsBattery && notice == nil
             && !showsCountdown && activityEnabled && nowPlaying.isPlaying
-        // Wider when the shelf / clipboard column (+120) or the mirror tile (+116) is on.
-        let expandedSize = CGSize(width: 520 + (shelfEnabled || clipboardEnabled ? 120 : 0) + (mirrorEnabled ? 116 : 0),
+        // Wider when the right-hand column (+120) or the mirror tile (+116) is on.
+        let expandedSize = CGSize(width: 520 + (trayTabs.isEmpty ? 0 : 120) + (mirrorEnabled ? 116 : 0),
                                   height: NotchPanel.expandedSize.height)
         let cornerWidth = (expandedSize.width - notchSize.width) / 2 - 32 // strips beside the notch
         // Each side only as wide as its content: HUD bar / battery percentage / time, or artwork.
@@ -62,7 +65,7 @@ struct NotchView: View {
                                 MirrorView(mirror: mirror)
                             }
                             NowPlayingView(nowPlaying: nowPlaying)
-                            if shelfEnabled || clipboardEnabled {
+                            if !trayTabs.isEmpty {
                                 trayColumn.frame(width: 200)
                             }
                         }
@@ -80,6 +83,17 @@ struct NotchView: View {
                         if timerEnabled || countdown.isActive {
                             CountdownHeaderView(countdown: countdown)
                         }
+                        Button { hotKey.isPinned.toggle() } label: {
+                            Image(systemName: hotKey.isPinned ? "pin.fill" : "pin")
+                                .font(.caption)
+                                .foregroundStyle(hotKey.isPinned ? .orange : .secondary)
+                                .frame(width: 22, height: 22)
+                                .background(.white.opacity(0.12), in: Circle())
+                                .contentShape(Circle())
+                        }
+                        .buttonStyle(.plain)
+                        .help(hotKey.isPinned ? "Unpin (Esc)" : "Keep open")
+                        .accessibilityLabel(hotKey.isPinned ? "Unpin island" : "Keep island open")
                         Button { SettingsView.open(openSettings) } label: {
                             Image(systemName: "gearshape.fill")
                                 .font(.caption)
@@ -130,6 +144,10 @@ struct NotchView: View {
         })
         .animation(Self.animation(opening: isExpanded, reduceMotion: reduceMotion), value: size)
         .environment(\.colorScheme, .dark)
+        .onChange(of: hotKey.closeCount) { isHovering = false }
+        .onChange(of: isExpanded) { _, expanded in
+            if !expanded { Self.returnKeyboardFocus() }
+        }
         .onReceive(NotificationCenter.default.publisher(for: SettingsView.openRequest)) { _ in
             SettingsView.open(openSettings)
         }
@@ -160,24 +178,41 @@ struct NotchView: View {
         return opening ? .spring(duration: 0.3, bounce: 0.15) : .spring(duration: 0.18, bounce: 0)
     }
 
-    /// Shelf and clipboard share one column, with a switch when both are on.
+    private var trayTabs: [TrayTab] {
+        [(TrayTab.shelf, shelfEnabled), (.clipboard, clipboardEnabled), (.notes, notesEnabled),
+         (.todos, todosEnabled), (.shortcuts, shortcutsEnabled)].filter(\.1).map(\.0)
+    }
+
+    /// Shelf, clipboard, notes, to-dos and Shortcuts share one column, with tabs when more than one is on.
     private var trayColumn: some View {
-        VStack(spacing: 6) {
-            if shelfEnabled && clipboardEnabled {
-                Picker("", selection: $showsClipboard) {
-                    Image(systemName: "tray").accessibilityLabel("Shelf").tag(false)
-                    Image(systemName: "doc.on.clipboard").accessibilityLabel("Clipboard").tag(true)
+        let tabs = trayTabs
+        let tab = tabs.contains(selectedTab) ? selectedTab : tabs[0]
+        return VStack(spacing: 6) {
+            if tabs.count > 1 {
+                Picker("", selection: Binding(get: { tab }, set: { selectedTab = $0 })) {
+                    ForEach(tabs) { Image(systemName: $0.symbol).accessibilityLabel($0.title).help($0.title).tag($0) }
                 }
                 .pickerStyle(.segmented)
                 .labelsHidden()
                 .controlSize(.small)
             }
-            if clipboardEnabled && (showsClipboard || !shelfEnabled) {
-                ClipboardView(clipboard: clipboard)
-            } else {
-                ShelfView(shelf: shelf)
+            switch tab {
+            case .shelf: ShelfView(shelf: shelf)
+            case .clipboard: ClipboardView(clipboard: clipboard)
+            case .notes: NotesView { hotKey.isPinned = true } // typing keeps the island open
+            case .todos: TodosView { hotKey.isPinned = true }
+            case .shortcuts: ShortcutsView()
             }
         }
+    }
+
+    /// Typing in Notes or To-dos makes the panel the key window. Once the island closes, hand the
+    /// keyboard back to the app in front, which never stopped being the active app.
+    private static func returnKeyboardFocus() {
+        guard let panel = NSApp.windows.first(where: { $0 is NotchPanel }), panel.isKeyWindow else { return }
+        panel.makeFirstResponder(nil) // end editing, or keys keep landing in the hidden note
+        panel.orderOut(nil) // macOS gives the keyboard back to the active app's window
+        panel.orderFrontRegardless()
     }
 }
 

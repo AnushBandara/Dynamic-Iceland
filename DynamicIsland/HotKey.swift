@@ -1,7 +1,8 @@
 import Carbon.HIToolbox
 import Observation
 
-/// Control-Option-I opens and closes the island from the keyboard; Esc closes it. Carbon hot keys
+/// Control-Option-I opens and closes the island from the keyboard; Esc closes it, also when pinned
+/// open (pin button, or typing in Notes / To-dos). Carbon hot keys
 /// need no permission, and Esc is only claimed while the island is open this way, so the panel
 /// never has to take keyboard focus from the app you're in.
 @MainActor @Observable
@@ -12,6 +13,20 @@ final class IslandHotKey {
 
     var isOpen = false {
         didSet { if isOpen != oldValue { updateEscape() } }
+    }
+    /// Stays open when the pointer leaves, until unpinned, Esc or Control-Option-I.
+    var isPinned = false {
+        didSet { if isPinned != oldValue { updateEscape() } }
+    }
+
+    /// Counts Esc / Control-Option-I closes, so the island also drops its hover state and closes
+    /// while the pointer is still over it.
+    private(set) var closeCount = 0
+
+    func close() {
+        isOpen = false
+        isPinned = false
+        closeCount += 1
     }
 
     @ObservationIgnored private var toggleKey: EventHotKeyRef?
@@ -30,7 +45,11 @@ final class IslandHotKey {
             // Delivered on the main thread's event loop.
             MainActor.assumeIsolated {
                 let hotKey = Unmanaged<IslandHotKey>.fromOpaque(context!).takeUnretainedValue()
-                hotKey.isOpen = id.id == IslandHotKey.toggleID ? !hotKey.isOpen : false
+                if id.id == IslandHotKey.toggleID && !hotKey.isOpen && !hotKey.isPinned {
+                    hotKey.isOpen = true
+                } else {
+                    hotKey.close()
+                }
             }
             return noErr
         }, 1, &pressed, Unmanaged.passUnretained(self).toOpaque(), nil)
@@ -47,14 +66,14 @@ final class IslandHotKey {
         } else if !enabled, let key = toggleKey {
             UnregisterEventHotKey(key)
             toggleKey = nil
-            isOpen = false
+            close()
         }
     }
 
     private func updateEscape() {
-        if isOpen, escapeKey == nil {
+        if isOpen || isPinned, escapeKey == nil {
             escapeKey = register(kVK_Escape, modifiers: 0, id: Self.escapeID)
-        } else if !isOpen, let key = escapeKey {
+        } else if !isOpen && !isPinned, let key = escapeKey {
             UnregisterEventHotKey(key)
             escapeKey = nil
         }
