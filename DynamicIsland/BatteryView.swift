@@ -15,6 +15,6 @@ struct CompactBatteryView: View {
                 .font(.callout.monospacedDigit().weight(.semibold))
                 .foregroundStyle(color)
         }
-        .padding(.horizontal, 14)
+        .padding(.horizontal, 10)
     }
 }
