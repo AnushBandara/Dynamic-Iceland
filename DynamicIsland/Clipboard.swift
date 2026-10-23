@@ -5,7 +5,7 @@ import Observation
 /// the change count. Kept in memory only, and password managers' concealed copies are skipped.
 @MainActor @Observable
 final class Clipboard {
-    static let enabledKey = "clipboardEnabled"
+    nonisolated static let enabledKey = "clipboardEnabled"
     static let limit = 20
     // nspasteboard.org markers that password managers and similar apps set on sensitive copies
     private static let skippedTypes: Set<String> = ["org.nspasteboard.ConcealedType", "org.nspasteboard.TransientType"]
