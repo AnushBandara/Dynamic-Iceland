@@ -18,7 +18,8 @@ struct DynamicIslandApp: App {
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private let nowPlaying = NowPlaying()
     private let shelf = Shelf()
-    private lazy var panel = NotchPanel(nowPlaying: nowPlaying, shelf: shelf)
+    private let hud = SystemHUD()
+    private lazy var panel = NotchPanel(nowPlaying: nowPlaying, shelf: shelf, hud: hud)
 
     func applicationWillTerminate(_ notification: Notification) {
         nowPlaying.stop()
@@ -26,6 +27,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         nowPlaying.start()
+        hud.start()
         panel.reposition()
         panel.orderFrontRegardless()
         NotificationCenter.default.addObserver(

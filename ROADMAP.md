@@ -4,7 +4,7 @@
 - [x] Launch at login (`SMAppService`)
 - [x] Now playing: artwork, title, progress, play/pause/skip, compact live activity. Via vendored mediaremote-adapter (MediaRemote is entitlement-gated since macOS 15.4)
 - [x] File shelf: drag files onto the notch, drag them back out, kept across restarts (setting)
-- [ ] System HUDs: volume / brightness / keyboard backlight. Needs Accessibility permission for media-key event tap
+- [x] System HUDs: volume / brightness replace the macOS HUD (event tap, Accessibility). Keyboard backlight skipped: notched MacBooks have no backlight keys
 - [ ] Battery: charging / low-battery animation (IOKit power source notifications)
 - [ ] Calendar: next event + join link (EventKit)
 - [ ] Timer / Pomodoro
