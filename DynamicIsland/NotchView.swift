@@ -19,8 +19,8 @@ struct NotchView: View {
         let showsActivity = !isExpanded && !showsHUD && !showsBattery && nowPlaying.isPlaying
         let expandedSize = CGSize(width: shelfEnabled ? NotchPanel.expandedSize.width : 520,
                                   height: NotchPanel.expandedSize.height)
-        // Each side only as wide as its content: HUD level bar, battery percentage, artwork.
-        let wings: CGFloat = showsHUD ? 180 : showsBattery ? 112 : showsActivity ? notchSize.height * 2 : 0
+        // Each side only as wide as its content: HUD bar / battery percentage, or artwork.
+        let wings: CGFloat = showsHUD || showsBattery ? 112 : showsActivity ? notchSize.height * 2 : 0
         let size = isExpanded ? expandedSize : CGSize(width: notchSize.width + wings, height: notchSize.height)
         let radius: CGFloat = isExpanded ? 24 : 10
         let shape = UnevenRoundedRectangle(bottomLeadingRadius: radius, bottomTrailingRadius: radius)

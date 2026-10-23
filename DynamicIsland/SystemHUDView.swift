@@ -18,9 +18,9 @@ struct CompactHUDView: View {
                         .scaleEffect(x: CGFloat(hud.isMuted ? 0 : hud.level), anchor: .leading)
                         .animation(.smooth(duration: 0.15), value: hud.level)
                 }
-                .frame(width: 60, height: 5)
+                .frame(width: 40, height: 5)
         }
-        .padding(.horizontal, 14)
+        .padding(.horizontal, 10)
     }
 
     private var symbol: String {
