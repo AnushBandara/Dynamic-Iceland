@@ -17,9 +17,20 @@ struct NowPlayingView: View {
                     ArtworkView(nowPlaying: nowPlaying)
                         .frame(width: 84, height: 84)
                         .clipShape(.rect(cornerRadius: 12))
+                        .overlay(alignment: .bottomTrailing) {
+                            // Which app is playing; the artwork alone doesn't say (the app icon is the artwork otherwise).
+                            if nowPlaying.artwork != nil, let icon = nowPlaying.appIcon {
+                                Image(nsImage: icon)
+                                    .resizable()
+                                    .frame(width: 28, height: 28)
+                                    .shadow(color: .black.opacity(0.5), radius: 3)
+                                    .offset(x: 6, y: 6)
+                            }
+                        }
                 }
                 .buttonStyle(.plain)
-                .accessibilityLabel(nowPlaying.appURL.map { "Open \($0.deletingPathExtension().lastPathComponent)" } ?? "Artwork")
+                .help(appName.map { "Playing in \($0). Click to open it." } ?? "")
+                .accessibilityLabel(appName.map { "Open \($0)" } ?? "Artwork")
 
                 VStack(alignment: .leading, spacing: 6) {
                     Text(nowPlaying.title ?? "").font(.headline).lineLimit(1)
@@ -34,6 +45,10 @@ struct NowPlayingView: View {
                 }
             }
         }
+    }
+
+    private var appName: String? {
+        nowPlaying.appURL.map { FileManager.default.displayName(atPath: $0.path) }
     }
 
     private var progress: some View {
