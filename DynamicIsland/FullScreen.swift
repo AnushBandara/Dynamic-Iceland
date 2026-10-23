@@ -6,6 +6,7 @@ import Observation
 @MainActor @Observable
 final class FullScreen {
     private(set) var isActive = false
+    @ObservationIgnored private var windowTimer: Timer?
 
     func start() {
         update()
@@ -20,10 +21,19 @@ final class FullScreen {
                 }
             }
         }
-        // App-drawn full screen doesn't switch Spaces, so nothing notifies us.
-        Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { _ in
+    }
+
+    /// App-drawn full screen doesn't switch Spaces, so nothing notifies us: check the windows each
+    /// second, but only while it matters (now playing would show), so the app stays idle otherwise.
+    func pollsWindows(_ polls: Bool) {
+        windowTimer?.invalidate()
+        windowTimer = nil
+        guard polls else { return }
+        update()
+        windowTimer = Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { _ in
             MainActor.assumeIsolated { self.update() }
-        }.tolerance = 0.5 // lets macOS batch the wake-up with others
+        }
+        windowTimer?.tolerance = 0.5 // lets macOS batch the wake-up with others
     }
 
     private func update() {
