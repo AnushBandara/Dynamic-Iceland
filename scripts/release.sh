@@ -1,6 +1,6 @@
 #!/bin/zsh
-# Builds a Developer ID signed, notarized release and publishes it to GitHub Releases,
-# with the Sparkle appcast.xml the app checks for updates.
+# Builds a Developer ID signed, notarized release and publishes it to GitHub Releases: a DMG to
+# install from, and the zip + Sparkle appcast.xml the app checks for updates.
 #
 # One-time setup on the release Mac:
 #   1. Install a "Developer ID Application" certificate in the login keychain.
@@ -17,8 +17,8 @@ REPO=${REPO:-oleeai/dynamic-island} # must match SUFeedURL in project.yml
 VERSION=$(sed -n 's/.*MARKETING_VERSION: "\(.*\)"/\1/p' project.yml)
 DIST=dist/$VERSION
 
-security find-identity -v -p codesigning | grep -q "Developer ID Application.*($TEAM_ID)" \
-    || { echo "No Developer ID Application certificate for team $TEAM_ID in the keychain" >&2; exit 1; }
+IDENTITY=$(security find-identity -v -p codesigning | grep -o "Developer ID Application: .*($TEAM_ID)" | head -1)
+[[ -n $IDENTITY ]] || { echo "No Developer ID Application certificate for team $TEAM_ID in the keychain" >&2; exit 1; }
 git diff --quiet HEAD || { echo "Commit your changes first" >&2; exit 1; }
 
 rm -rf "$DIST" && mkdir -p "$DIST"
@@ -42,18 +42,28 @@ xcodebuild -exportArchive -archivePath "$DIST/DynamicIsland.xcarchive" -exportPa
     -exportOptionsPlist "$DIST/ExportOptions.plist" -quiet
 
 APP=$DIST/DynamicIsland.app
+DMG=$DIST/DynamicIsland-$VERSION.dmg
 ZIP=$DIST/DynamicIsland-$VERSION.zip
-ditto -c -k --keepParent "$APP" "$ZIP"
-xcrun notarytool submit "$ZIP" --keychain-profile "$NOTARY_PROFILE" --wait
-xcrun stapler staple "$APP"
-rm "$ZIP" && ditto -c -k --keepParent "$APP" "$ZIP" # zip again with the ticket stapled
-spctl --assess --type execute -v "$APP"
 
-# Signs the zip with the Sparkle key from the keychain and writes appcast.xml beside it.
-mkdir "$DIST/updates" && mv "$ZIP" "$DIST/updates/"
+# The DMG installs (drag to Applications); notarizing it also notarizes the app inside.
+mkdir "$DIST/dmg-root"
+ditto "$APP" "$DIST/dmg-root/DynamicIsland.app"
+ln -s /Applications "$DIST/dmg-root/Applications"
+hdiutil create -quiet -volname "Dynamic Island" -srcfolder "$DIST/dmg-root" -fs HFS+ -format UDZO "$DMG"
+codesign --timestamp -s "$IDENTITY" "$DMG"
+xcrun notarytool submit "$DMG" --keychain-profile "$NOTARY_PROFILE" --wait
+xcrun stapler staple "$DMG"
+xcrun stapler staple "$APP"
+spctl --assess --type execute -v "$APP"
+spctl --assess --type open --context context:primary-signature -v "$DMG"
+
+# Sparkle updates from a zip of the stapled app. generate_appcast signs it with the Sparkle key
+# from the keychain and writes appcast.xml beside it.
+mkdir "$DIST/updates"
+ditto -c -k --keepParent "$APP" "$DIST/updates/$(basename "$ZIP")"
 build/SourcePackages/artifacts/sparkle/Sparkle/bin/generate_appcast \
     --download-url-prefix "https://github.com/$REPO/releases/download/v$VERSION/" "$DIST/updates"
 
 git tag "v$VERSION"
 git push origin "v$VERSION"
-gh release create "v$VERSION" "$DIST/updates/"*.zip "$DIST/updates/appcast.xml" --repo "$REPO" --title "$VERSION" --generate-notes
+gh release create "v$VERSION" "$DMG" "$DIST/updates/"*.zip "$DIST/updates/appcast.xml" --repo "$REPO" --title "$VERSION" --generate-notes
