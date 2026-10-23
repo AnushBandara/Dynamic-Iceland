@@ -9,7 +9,7 @@
 - [x] Calendar: current / next event beside the notch with a join button for meeting links (EventKit)
 - [x] Timer / Pomodoro: 5 / 15 / 25 min presets beside the notch, pause / stop, compact countdown, "Done" alert with sound
 - [x] AirDrop drop target: Shelf / AirDrop drop zones while dragging files over the island (`NSSharingService`)
-- [ ] Camera mirror (AVFoundation)
+- [x] Camera mirror: click-to-start preview tile in the expanded island, camera off when it collapses (AVFoundation)
 - [ ] Clipboard history
 - [ ] Download finished / AirPods connected alerts
 - [ ] Focus mode indicator. No public API, reading Focus state needs Full Disk Access

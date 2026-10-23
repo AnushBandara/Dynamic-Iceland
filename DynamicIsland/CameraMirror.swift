@@ -10,40 +10,53 @@ final class CameraMirror {
 
     private(set) var isOn = false
     private(set) var isDenied = false
-    @ObservationIgnored let session = AVCaptureSession()
+    /// Created once and attached up front, like Apple's AVCam: attaching a preview layer while
+    /// the session starts on another thread crashes ("collection mutated while enumerated").
+    @ObservationIgnored let previewLayer: AVCaptureVideoPreviewLayer
+    @ObservationIgnored private let session = AVCaptureSession()
+    /// Serial, so configure / start / stop never overlap even with fast clicks.
+    @ObservationIgnored private let queue = DispatchQueue(label: "ai.olee.dynamicisland.camera")
+    @ObservationIgnored private var wantsOn = false
+
+    init() {
+        previewLayer = AVCaptureVideoPreviewLayer(session: session)
+        previewLayer.videoGravity = .resizeAspectFill
+    }
 
     func toggle() {
         if isDenied {
             NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Camera")!)
-        } else if isOn {
+        } else if wantsOn {
             stop()
         } else {
+            wantsOn = true
             Task { await start() }
         }
     }
 
     func stop() {
+        wantsOn = false
         guard isOn else { return }
         isOn = false
-        run { $0.stopRunning() }
+        nonisolated(unsafe) let session = session
+        queue.async { session.stopRunning() }
     }
 
     private func start() async {
         guard await AVCaptureDevice.requestAccess(for: .video) else {
             isDenied = true
+            wantsOn = false
             return
         }
-        if session.inputs.isEmpty, let camera = AVCaptureDevice.default(for: .video),
-           let input = try? AVCaptureDeviceInput(device: camera), session.canAddInput(input) {
-            session.addInput(input)
-        }
+        guard wantsOn else { return } // the island closed while the permission prompt was up
         isOn = true
-        run { $0.startRunning() }
-    }
-
-    /// startRunning/stopRunning block, so keep them off the main thread.
-    private func run(_ body: @escaping @Sendable (AVCaptureSession) -> Void) {
-        nonisolated(unsafe) let session = session // AVCaptureSession is safe to start/stop from any thread
-        DispatchQueue.global(qos: .userInitiated).async { body(session) }
+        nonisolated(unsafe) let session = session
+        queue.async {
+            if session.inputs.isEmpty, let camera = AVCaptureDevice.default(for: .video),
+               let input = try? AVCaptureDeviceInput(device: camera), session.canAddInput(input) {
+                session.addInput(input)
+            }
+            session.startRunning()
+        }
     }
 }

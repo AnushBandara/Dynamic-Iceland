@@ -8,7 +8,7 @@ struct MirrorView: View {
     var body: some View {
         ZStack {
             if mirror.isOn {
-                CameraPreview(session: mirror.session)
+                CameraPreview(layer: mirror.previewLayer)
             } else {
                 Image(systemName: mirror.isDenied ? "video.slash" : "camera.fill")
                     .font(.title2)
@@ -25,15 +25,16 @@ struct MirrorView: View {
     }
 }
 
+/// Hosts the mirror's long-lived preview layer; re-parented each time the tile appears.
 private struct CameraPreview: NSViewRepresentable {
-    let session: AVCaptureSession
+    let layer: AVCaptureVideoPreviewLayer
 
     func makeNSView(context: Context) -> NSView {
         let view = NSView()
-        let layer = AVCaptureVideoPreviewLayer(session: session)
-        layer.videoGravity = .resizeAspectFill
-        view.layer = layer
         view.wantsLayer = true
+        layer.frame = view.bounds
+        layer.autoresizingMask = [.layerWidthSizable, .layerHeightSizable]
+        view.layer?.addSublayer(layer) // moves it out of any previous tile's view
         return view
     }
 
