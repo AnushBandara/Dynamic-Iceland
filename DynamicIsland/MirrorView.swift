@@ -20,6 +20,10 @@ struct MirrorView: View {
         .clipShape(.rect(cornerRadius: 16))
         .contentShape(.rect)
         .onTapGesture { mirror.toggle() }
+        .accessibilityElement(children: .ignore)
+        .accessibilityAddTraits(.isButton)
+        .accessibilityLabel(mirror.isOn ? "Turn off camera mirror" : "Camera mirror")
+        .accessibilityAction { mirror.toggle() }
         .onDisappear { mirror.stop() } // camera off as soon as the island collapses
         .help(mirror.isDenied ? "Allow camera access in System Settings" : "Mirror")
     }

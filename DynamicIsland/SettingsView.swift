@@ -45,6 +45,7 @@ struct SettingsView: View {
 private struct GeneralSettings: View {
     @AppStorage("useLiquidGlass") private var useLiquidGlass = false
     @AppStorage(DynamicIslandApp.menuBarIconKey) private var showsMenuBarIcon = true
+    @AppStorage(IslandHotKey.enabledKey) private var hotKeyEnabled = true
     @State private var launchAtLogin = SMAppService.mainApp.status == .enabled
 
     var body: some View {
@@ -60,6 +61,11 @@ private struct GeneralSettings: View {
                            isOn: $showsMenuBarIcon)
             } header: {
                 Text("Menu bar")
+            }
+            Section("Keyboard") {
+                FeatureRow(title: "Open with Control-Option-I", icon: "keyboard", color: .gray,
+                           detail: "Press ⌃⌥I anywhere to open or close the island without the pointer. Esc closes it.",
+                           isOn: $hotKeyEnabled)
             }
             Section {
                 if #available(macOS 26, *) {
@@ -77,7 +83,7 @@ private struct GeneralSettings: View {
             }
             Section("How to use") {
                 InfoRow(icon: "cursorarrow.rays", color: .blue,
-                        text: "Move the pointer to the notch to open the island. Move away to close it.")
+                        text: "Rest the pointer on the notch to open the island, or press ⌃⌥I. Move away or press Esc to close it.")
                 InfoRow(icon: "doc.on.doc.fill", color: .indigo,
                         text: "Drag files onto the notch to keep them on the shelf or send them with AirDrop.")
                 InfoRow(icon: "bell.badge.fill", color: .orange,

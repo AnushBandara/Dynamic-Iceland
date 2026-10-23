@@ -40,6 +40,9 @@ private struct ClipboardRow: View {
             .contentShape(Rectangle())
             .onHover { isHovering = $0 }
             .onTapGesture { clipboard.copy(text) }
+            .accessibilityAddTraits(.isButton)
+            .accessibilityHint("Copies this text again")
+            .accessibilityAction { clipboard.copy(text) }
             .help(text)
             .contextMenu {
                 Button("Copy") { clipboard.copy(text) }

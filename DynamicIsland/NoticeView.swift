@@ -35,6 +35,16 @@ struct CompactNoticeView: View {
             }
         }
         .padding(.horizontal, 10)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(accessibilityText)
+    }
+
+    private var accessibilityText: String {
+        switch notice {
+        case .downloaded(let url): "Downloaded \(url.lastPathComponent)"
+        case .headphones(let name, let battery): "\(name) connected" + (battery.map { ", battery \($0) percent" } ?? "")
+        case .focus(let name, _, _, let isOn): "\(name) \(isOn ? "on" : "off")"
+        }
     }
 
     /// Focus tints as named in ModeConfigurations.json.

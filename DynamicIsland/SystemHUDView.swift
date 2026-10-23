@@ -21,6 +21,9 @@ struct CompactHUDView: View {
                 .frame(width: 40, height: 5)
         }
         .padding(.horizontal, 10)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(hud.kind == .volume ? "Volume" : "Brightness")
+        .accessibilityValue(hud.isMuted ? "Muted" : "\(Int((hud.level * 100).rounded())) percent")
     }
 
     private var symbol: String {
