@@ -6,6 +6,7 @@ struct SettingsView: View {
     @AppStorage(Shelf.enabledKey) private var shelfEnabled = true
     @AppStorage(SystemHUD.enabledKey) private var hudEnabled = true
     @AppStorage(Battery.enabledKey) private var batteryAlertsEnabled = true
+    @AppStorage(Agenda.enabledKey) private var calendarEnabled = true
     @AppStorage(Shelf.keepKey) private var keepShelf = true
     @State private var launchAtLogin = SMAppService.mainApp.status == .enabled
 
@@ -26,6 +27,10 @@ struct SettingsView: View {
             Toggle(isOn: $batteryAlertsEnabled) {
                 Text("Battery alerts")
                 Text("Shows when the charger connects and at 20% / 10%.")
+            }
+            Toggle(isOn: $calendarEnabled) {
+                Text("Calendar")
+                Text("Shows your next meeting with a join button. Needs Calendar access.")
             }
             Toggle("File shelf", isOn: $shelfEnabled)
             Toggle("Keep shelf files after restart", isOn: $keepShelf).disabled(!shelfEnabled)

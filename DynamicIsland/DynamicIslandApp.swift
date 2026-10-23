@@ -20,7 +20,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let shelf = Shelf()
     private let hud = SystemHUD()
     private let battery = Battery()
-    private lazy var panel = NotchPanel(nowPlaying: nowPlaying, shelf: shelf, hud: hud, battery: battery)
+    private let agenda = Agenda()
+    private lazy var panel = NotchPanel(nowPlaying: nowPlaying, shelf: shelf, hud: hud, battery: battery, agenda: agenda)
 
     func applicationWillTerminate(_ notification: Notification) {
         nowPlaying.stop()
@@ -30,6 +31,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         nowPlaying.start()
         hud.start()
         battery.start()
+        agenda.start()
         panel.reposition()
         panel.orderFrontRegardless()
         NotificationCenter.default.addObserver(

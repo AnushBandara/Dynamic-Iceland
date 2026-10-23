@@ -22,5 +22,7 @@
 	<string>1</string>
 	<key>LSUIElement</key>
 	<true/>
+	<key>NSCalendarsFullAccessUsageDescription</key>
+	<string>Shows your next meeting in the island.</string>
 </dict>
 </plist>

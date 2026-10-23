@@ -29,6 +29,11 @@ targets:
       properties:
         CFBundleDisplayName: Dynamic Island
         LSUIElement: true # no Dock icon, lives in the menu bar
+        NSCalendarsFullAccessUsageDescription: Shows your next meeting in the island.
+    entitlements:
+      path: DynamicIsland/DynamicIsland.entitlements
+      properties:
+        com.apple.security.personal-information.calendars: true # hardened runtime blocks EventKit without it
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: ai.olee.dynamicisland

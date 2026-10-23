@@ -6,6 +6,7 @@ struct NotchView: View {
     let shelf: Shelf
     let hud: SystemHUD
     let battery: Battery
+    let agenda: Agenda
     @State private var isHovering = false
     @State private var isDropTargeted = false
     @AppStorage("useLiquidGlass") private var useLiquidGlass = false
@@ -35,6 +36,11 @@ struct NotchView: View {
                 }
                 .padding(EdgeInsets(top: notchSize.height + 8, leading: 24, bottom: 16, trailing: 24))
                 .frame(width: expandedSize.width, height: expandedSize.height)
+                .overlay(alignment: .topLeading) { // the strip left of the notch
+                    AgendaHeaderView(agenda: agenda)
+                        .frame(width: (expandedSize.width - notchSize.width) / 2 - 32, height: notchSize.height)
+                        .padding(.leading, 24)
+                }
                 .transition(.opacity)
             } else if showsHUD {
                 CompactHUDView(hud: hud, height: notchSize.height)
