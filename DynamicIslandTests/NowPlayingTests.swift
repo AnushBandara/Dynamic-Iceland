@@ -4,7 +4,7 @@ import Testing
 
 @MainActor @Test func collapsedIslandRendersWithNothingPlaying() {
     let shelf = Shelf(defaults: UserDefaults(suiteName: "NotchViewTests")!)
-    let view = NotchView(notchSize: CGSize(width: 200, height: 32), nowPlaying: NowPlaying(), shelf: shelf, hud: SystemHUD(), battery: Battery(), agenda: Agenda())
+    let view = NotchView(notchSize: CGSize(width: 200, height: 32), nowPlaying: NowPlaying(), shelf: shelf, hud: SystemHUD(), battery: Battery(), agenda: Agenda(), countdown: Countdown())
     let image = NSBitmapImageRep(cgImage: ImageRenderer(content: view.frame(width: 640, height: 180)).cgImage!)
     #expect(image.colorAt(x: 320, y: 10)?.alphaComponent == 1) // black island under the notch
 }
