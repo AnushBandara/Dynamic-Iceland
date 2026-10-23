@@ -31,6 +31,8 @@ targets:
         LSUIElement: true # no Dock icon, lives in the menu bar
         NSCalendarsFullAccessUsageDescription: Shows your next meeting in the island.
         NSCameraUsageDescription: Shows a camera mirror in the island when you click it.
+        NSDownloadsFolderUsageDescription: Shows an alert in the island when a download finishes.
+        NSBluetoothAlwaysUsageDescription: Shows an alert in the island when your headphones connect.
     entitlements:
       path: DynamicIsland/DynamicIsland.entitlements
       properties:

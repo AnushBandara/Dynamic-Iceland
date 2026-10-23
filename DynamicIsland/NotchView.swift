@@ -11,6 +11,7 @@ struct NotchView: View {
     let mirror: CameraMirror
     let fullScreen: FullScreen
     let clipboard: Clipboard
+    let notices: Notices
     @State private var isHovering = false
     @State private var isDropTargeted = false
     @State private var dropZone: DropZone?
@@ -27,16 +28,18 @@ struct NotchView: View {
         let isExpanded = isHovering || isDropTargeted
         let showsHUD = !isExpanded && hud.isVisible
         let showsBattery = !isExpanded && !showsHUD && battery.alert != nil
-        let showsCountdown = !isExpanded && !showsHUD && !showsBattery && (countdown.isActive || countdown.isFinished)
+        let notice = isExpanded || showsHUD || showsBattery ? nil : notices.current
+        let showsCountdown = !isExpanded && !showsHUD && !showsBattery && notice == nil
+            && (countdown.isActive || countdown.isFinished)
         // The always-on now playing hides in full screen (e.g. over a video); alerts still show.
-        let showsActivity = !isExpanded && !fullScreen.isActive && !showsHUD && !showsBattery && !showsCountdown
-            && nowPlaying.isPlaying
+        let showsActivity = !isExpanded && !fullScreen.isActive && !showsHUD && !showsBattery && notice == nil
+            && !showsCountdown && nowPlaying.isPlaying
         // Wider when the shelf / clipboard column (+120) or the mirror tile (+116) is on.
         let expandedSize = CGSize(width: 520 + (shelfEnabled || clipboardEnabled ? 120 : 0) + (mirrorEnabled ? 116 : 0),
                                   height: NotchPanel.expandedSize.height)
         let cornerWidth = (expandedSize.width - notchSize.width) / 2 - 32 // strips beside the notch
         // Each side only as wide as its content: HUD bar / battery percentage / time, or artwork.
-        let wings: CGFloat = showsHUD || showsBattery || showsCountdown ? 112 : showsActivity ? notchSize.height * 2 : 0
+        let wings: CGFloat = showsHUD || showsBattery || notice != nil || showsCountdown ? 112 : showsActivity ? notchSize.height * 2 : 0
         let size = isExpanded ? expandedSize : CGSize(width: notchSize.width + wings, height: notchSize.height)
         let radius: CGFloat = isExpanded ? 24 : 10
         let shape = UnevenRoundedRectangle(bottomLeadingRadius: radius, bottomTrailingRadius: radius)
@@ -80,6 +83,10 @@ struct NotchView: View {
                     .transition(.opacity)
             } else if showsBattery {
                 CompactBatteryView(battery: battery)
+                    .frame(maxHeight: .infinity)
+                    .transition(.opacity)
+            } else if let notice {
+                CompactNoticeView(notice: notice)
                     .frame(maxHeight: .infinity)
                     .transition(.opacity)
             } else if showsCountdown {

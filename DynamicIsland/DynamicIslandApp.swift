@@ -4,6 +4,12 @@ import SwiftUI
 struct DynamicIslandApp: App {
     @NSApplicationDelegateAdaptor private var appDelegate: AppDelegate
 
+    init() {
+        if let flag = CommandLine.arguments.firstIndex(of: Notices.batteryFlag), flag + 1 < CommandLine.arguments.count {
+            Notices.printBatteryAndExit(address: CommandLine.arguments[flag + 1])
+        }
+    }
+
     var body: some Scene {
         MenuBarExtra("Dynamic Island", systemImage: "capsule.fill") {
             SettingsLink()
@@ -25,9 +31,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let mirror = CameraMirror()
     private let fullScreen = FullScreen()
     private let clipboard = Clipboard()
+    private let notices = Notices()
     private lazy var panel = NotchPanel(nowPlaying: nowPlaying, shelf: shelf, hud: hud, battery: battery,
                                         agenda: agenda, countdown: countdown, mirror: mirror, fullScreen: fullScreen,
-                                        clipboard: clipboard)
+                                        clipboard: clipboard, notices: notices)
 
     func applicationWillTerminate(_ notification: Notification) {
         nowPlaying.stop()
@@ -40,6 +47,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         battery.start()
         agenda.start()
         clipboard.start()
+        notices.start()
         panel.reposition()
         panel.orderFrontRegardless()
         NotificationCenter.default.addObserver(
