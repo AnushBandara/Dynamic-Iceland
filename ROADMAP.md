@@ -6,7 +6,7 @@
 - [x] File shelf: drag files onto the notch, drag them back out, kept across restarts (setting)
 - [x] System HUDs: volume / brightness replace the macOS HUD (event tap, Accessibility). Keyboard backlight skipped: notched MacBooks have no backlight keys
 - [x] Battery: charger-connected and 20% / 10% low-battery alerts (IOKit power source notifications)
-- [ ] Calendar: next event + join link (EventKit)
+- [x] Calendar: current / next event beside the notch with a join button for meeting links (EventKit)
 - [ ] Timer / Pomodoro
 - [ ] AirDrop drop target (`NSSharingService(named: .sendViaAirDrop)`)
 - [ ] Camera mirror (AVFoundation)
