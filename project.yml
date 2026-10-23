@@ -41,7 +41,7 @@ targets:
         NSDownloadsFolderUsageDescription: Shows an alert in the island when a download finishes.
         NSBluetoothAlwaysUsageDescription: Shows an alert in the island when your headphones connect.
         # Sparkle: releases upload appcast.xml next to the zip (scripts/release.sh)
-        SUFeedURL: https://github.com/oleeai/dynamic-island/releases/latest/download/appcast.xml
+        SUFeedURL: https://github.com/AnushBandara/Dynamic-Iceland/releases/latest/download/appcast.xml
         SUPublicEDKey: UcGInE0XptcaIUUTw7nZrP1WS2Ao1Qp3T7u68Jrr9C0= # private key: login keychain (generate_keys -x to back up)
         SUEnableAutomaticChecks: true
     entitlements:
