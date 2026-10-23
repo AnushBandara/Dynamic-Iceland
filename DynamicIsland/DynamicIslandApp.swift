@@ -44,9 +44,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let fullScreen = FullScreen()
     private let clipboard = Clipboard()
     private let notices = Notices()
+    private let hotKey = IslandHotKey()
     private lazy var panel = NotchPanel(nowPlaying: nowPlaying, shelf: shelf, hud: hud, battery: battery,
                                         agenda: agenda, countdown: countdown, mirror: mirror, fullScreen: fullScreen,
-                                        clipboard: clipboard, notices: notices)
+                                        clipboard: clipboard, notices: notices, hotKey: hotKey)
 
     /// Opening the app again shows Settings, the way back when the menu bar icon is hidden.
     func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
@@ -66,6 +67,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         agenda.start()
         clipboard.start()
         notices.start()
+        hotKey.start()
         panel.reposition()
         panel.orderFrontRegardless()
         NotificationCenter.default.addObserver(

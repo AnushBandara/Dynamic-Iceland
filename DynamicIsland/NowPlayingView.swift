@@ -19,6 +19,7 @@ struct NowPlayingView: View {
                         .clipShape(.rect(cornerRadius: 12))
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel(nowPlaying.appURL.map { "Open \($0.deletingPathExtension().lastPathComponent)" } ?? "Artwork")
 
                 VStack(alignment: .leading, spacing: 6) {
                     Text(nowPlaying.title ?? "").font(.headline).lineLimit(1)
@@ -55,6 +56,15 @@ struct NowPlayingView: View {
     private func control(_ symbol: String, _ command: NowPlaying.Command) -> some View {
         Button { nowPlaying.send(command) } label: { Image(systemName: symbol).font(.title2) }
             .buttonStyle(.plain)
+            .accessibilityLabel(label(for: command))
+    }
+
+    private func label(for command: NowPlaying.Command) -> String {
+        switch command {
+        case .previousTrack: "Previous track"
+        case .nextTrack: "Next track"
+        case .togglePlayPause: nowPlaying.isPlaying ? "Pause" : "Play"
+        }
     }
 }
 
@@ -72,6 +82,9 @@ struct CompactNowPlayingView: View {
             Waveform(isPlaying: nowPlaying.isPlaying)
         }
         .padding(.horizontal, 8)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("Now playing")
+        .accessibilityValue([nowPlaying.title, nowPlaying.artist].compactMap { $0 }.joined(separator: ", "))
     }
 }
 

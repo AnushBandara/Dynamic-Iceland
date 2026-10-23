@@ -12,8 +12,10 @@ struct NotchView: View {
     let fullScreen: FullScreen
     let clipboard: Clipboard
     let notices: Notices
+    let hotKey: IslandHotKey
     @Environment(\.openSettings) private var openSettings
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
     @State private var isHovering = false
     @State private var hoverIntent: Task<Void, Never>?
     @State private var isDropTargeted = false
@@ -29,7 +31,7 @@ struct NotchView: View {
 
     var body: some View {
         // Dragging a file onto the notch opens it too: hover doesn't fire during a drag.
-        let isExpanded = isHovering || isDropTargeted
+        let isExpanded = isHovering || isDropTargeted || hotKey.isOpen
         let showsHUD = !isExpanded && hud.isVisible
         let showsBattery = !isExpanded && !showsHUD && battery.alert != nil
         let notice = isExpanded || showsHUD || showsBattery ? nil : notices.current
@@ -88,6 +90,7 @@ struct NotchView: View {
                         }
                         .buttonStyle(.plain)
                         .help("Settings")
+                        .accessibilityLabel("Settings")
                     }
                     .frame(width: cornerWidth, height: notchSize.height, alignment: .trailing)
                     .padding(.trailing, 24)
@@ -116,7 +119,7 @@ struct NotchView: View {
             }
         }
         .frame(width: size.width, height: size.height, alignment: .top)
-        .islandBackground(shape, glass: useLiquidGlass)
+        .islandBackground(shape, glass: useLiquidGlass && !reduceTransparency)
         .clipShape(shape) // the growing shape reveals the full-size content instead of it overflowing
         .contentShape(shape)
         .onHover(perform: hoverChanged)
@@ -137,7 +140,11 @@ struct NotchView: View {
     /// a menu or tab doesn't pop the island open. Leaving closes right away.
     private func hoverChanged(_ inside: Bool) {
         hoverIntent?.cancel()
-        guard inside else { isHovering = false; return }
+        guard inside else {
+            isHovering = false
+            hotKey.isOpen = false // opened from the keyboard, then visited and left with the pointer
+            return
+        }
         hoverIntent = Task {
             try? await Task.sleep(for: Self.hoverDelay)
             if !Task.isCancelled { isHovering = true }
@@ -158,8 +165,8 @@ struct NotchView: View {
         VStack(spacing: 6) {
             if shelfEnabled && clipboardEnabled {
                 Picker("", selection: $showsClipboard) {
-                    Image(systemName: "tray").tag(false)
-                    Image(systemName: "doc.on.clipboard").tag(true)
+                    Image(systemName: "tray").accessibilityLabel("Shelf").tag(false)
+                    Image(systemName: "doc.on.clipboard").accessibilityLabel("Clipboard").tag(true)
                 }
                 .pickerStyle(.segmented)
                 .labelsHidden()

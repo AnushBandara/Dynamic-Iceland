@@ -16,5 +16,8 @@ struct CompactBatteryView: View {
                 .foregroundStyle(color)
         }
         .padding(.horizontal, 10)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(battery.alert == .low ? "Battery low" : "Charging")
+        .accessibilityValue("\(battery.level) percent")
     }
 }

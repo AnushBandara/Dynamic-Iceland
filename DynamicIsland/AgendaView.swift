@@ -28,6 +28,7 @@ struct AgendaHeaderView: View {
                     }
                     .buttonStyle(.plain)
                     .help("Join meeting")
+                    .accessibilityLabel("Join meeting")
                 }
             }
         }
