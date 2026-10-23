@@ -1,3 +1,4 @@
+import Sparkle
 import SwiftUI
 
 @main
@@ -5,6 +6,8 @@ struct DynamicIslandApp: App {
     static let menuBarIconKey = "showMenuBarIcon"
     @NSApplicationDelegateAdaptor private var appDelegate: AppDelegate
     @AppStorage(menuBarIconKey) private var showsMenuBarIcon = true
+    // Checks daily in the background; the menu item checks now.
+    private let updater = SPUStandardUpdaterController(startingUpdater: true, updaterDelegate: nil, userDriverDelegate: nil)
 
     init() {
         if let flag = CommandLine.arguments.firstIndex(of: Notices.batteryFlag), flag + 1 < CommandLine.arguments.count {
@@ -15,6 +18,7 @@ struct DynamicIslandApp: App {
     var body: some Scene {
         MenuBarExtra("Dynamic Island", systemImage: "capsule.fill", isInserted: $showsMenuBarIcon) {
             SettingsButton()
+            Button("Check for Updates…") { updater.checkForUpdates(nil) }
             Divider()
             Button("Quit") { NSApp.terminate(nil) }.keyboardShortcut("q")
         }
