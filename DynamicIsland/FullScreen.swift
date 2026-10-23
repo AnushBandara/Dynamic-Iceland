@@ -23,7 +23,7 @@ final class FullScreen {
         // App-drawn full screen doesn't switch Spaces, so nothing notifies us.
         Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { _ in
             MainActor.assumeIsolated { self.update() }
-        }
+        }.tolerance = 0.5 // lets macOS batch the wake-up with others
     }
 
     private func update() {

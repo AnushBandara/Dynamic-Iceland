@@ -69,10 +69,40 @@ struct CompactNowPlayingView: View {
                 .frame(width: height - 10, height: height - 10)
                 .clipShape(.rect(cornerRadius: 5))
             Spacer()
-            Image(systemName: "waveform")
-                .symbolEffect(.variableColor.iterative, isActive: nowPlaying.isPlaying)
+            Waveform(isPlaying: nowPlaying.isPlaying)
         }
         .padding(.horizontal, 8)
+    }
+}
+
+/// Five bars that change height four times a second, without animating in between. SF Symbol
+/// effects and variable values animate on every change, which kept the island redrawing
+/// (~20% CPU while playing); plain shapes cost well under 1%.
+private struct Waveform: View {
+    let isPlaying: Bool
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var step = 0
+
+    private static let resting: [CGFloat] = [0.35, 0.65, 1, 0.65, 0.35]
+    private static let steps: [[CGFloat]] = [
+        [0.5, 0.9, 0.6, 0.8, 0.4], [0.8, 0.5, 1, 0.5, 0.7], [0.4, 1, 0.7, 0.6, 0.9], [0.7, 0.6, 0.9, 1, 0.5],
+    ]
+
+    var body: some View {
+        let isMoving = isPlaying && !reduceMotion
+        let heights = isMoving ? Self.steps[step % Self.steps.count] : Self.resting
+        HStack(spacing: 2) {
+            ForEach(heights.indices, id: \.self) { index in
+                Capsule().frame(width: 2.5, height: 3 + 13 * heights[index])
+            }
+        }
+        .frame(height: 16)
+        .task(id: isMoving) {
+            while isMoving && !Task.isCancelled {
+                try? await Task.sleep(for: .milliseconds(250))
+                step += 1
+            }
+        }
     }
 }
 
@@ -81,7 +111,7 @@ private struct ArtworkView: View {
     let nowPlaying: NowPlaying
 
     var body: some View {
-        if let image = nowPlaying.artwork ?? nowPlaying.appURL.map({ NSWorkspace.shared.icon(forFile: $0.path) }) {
+        if let image = nowPlaying.artwork ?? nowPlaying.appIcon {
             Image(nsImage: image).resizable().aspectRatio(contentMode: .fill)
         } else {
             Image(systemName: "music.note")
