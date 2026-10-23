@@ -3,6 +3,10 @@ options:
   bundleIdPrefix: ai.olee
   deploymentTarget:
     macOS: "14.0"
+packages:
+  Sparkle:
+    url: https://github.com/sparkle-project/Sparkle
+    from: "2.6.0"
 configFiles:
   Debug: Config/Signing.xcconfig
   Release: Config/Signing.xcconfig
@@ -24,6 +28,7 @@ targets:
       - target: MediaRemoteAdapter
         embed: true
         link: false
+      - package: Sparkle
     info:
       path: DynamicIsland/Info.plist
       properties:
@@ -35,6 +40,10 @@ targets:
         NSCameraUsageDescription: Shows a camera mirror in the island when you click it.
         NSDownloadsFolderUsageDescription: Shows an alert in the island when a download finishes.
         NSBluetoothAlwaysUsageDescription: Shows an alert in the island when your headphones connect.
+        # Sparkle: releases upload appcast.xml next to the zip (scripts/release.sh)
+        SUFeedURL: https://github.com/oleeai/dynamic-island/releases/latest/download/appcast.xml
+        SUPublicEDKey: UcGInE0XptcaIUUTw7nZrP1WS2Ao1Qp3T7u68Jrr9C0= # private key: login keychain (generate_keys -x to back up)
+        SUEnableAutomaticChecks: true
     entitlements:
       path: DynamicIsland/DynamicIsland.entitlements
       properties:
