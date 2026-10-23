@@ -2,85 +2,282 @@ import ServiceManagement
 import SwiftUI
 
 struct SettingsView: View {
+    @State private var permissions = Permissions()
+
+    var body: some View {
+        TabView {
+            GeneralSettings()
+                .tabItem { Label("General", systemImage: "gearshape") }
+            IslandSettings(permissions: permissions)
+                .tabItem { Label("Island", systemImage: "capsule.fill") }
+            AlertSettings(permissions: permissions)
+                .tabItem { Label("Alerts", systemImage: "bell.badge") }
+            PermissionSettings(permissions: permissions)
+                .tabItem { Label("Permissions", systemImage: "lock.shield") }
+        }
+        .frame(width: 560, height: 620)
+        .onAppear(perform: Self.bringToFront)
+        // Most permissions have no change notification; pick up grants made in System Settings.
+        .onReceive(Timer.publish(every: 1.5, on: .main, in: .common).autoconnect()) { _ in permissions.refresh() }
+    }
+
+    /// The app has no Dock icon, so macOS leaves its windows behind the frontmost app unless it activates.
+    static func bringToFront() {
+        NSApp.activate(ignoringOtherApps: true)
+        DispatchQueue.main.async {
+            NSApp.windows.first { $0.identifier?.rawValue.contains("Settings") == true }?.makeKeyAndOrderFront(nil)
+        }
+    }
+}
+
+// MARK: - Tabs
+
+private struct GeneralSettings: View {
     @AppStorage("useLiquidGlass") private var useLiquidGlass = false
-    @AppStorage(Shelf.enabledKey) private var shelfEnabled = true
-    @AppStorage(SystemHUD.enabledKey) private var hudEnabled = true
-    @AppStorage(Battery.enabledKey) private var batteryAlertsEnabled = true
-    @AppStorage(Agenda.enabledKey) private var calendarEnabled = true
-    @AppStorage(Countdown.enabledKey) private var timerEnabled = true
-    @AppStorage(DropZone.airDropKey) private var airDropEnabled = true
-    @AppStorage(CameraMirror.enabledKey) private var mirrorEnabled = true
-    @AppStorage(Shelf.keepKey) private var keepShelf = true
-    @AppStorage(Clipboard.enabledKey) private var clipboardEnabled = true
-    @AppStorage(Notices.downloadsKey) private var downloadAlertsEnabled = true
-    @AppStorage(Notices.headphonesKey) private var headphoneAlertsEnabled = true
-    @AppStorage(Notices.focusKey) private var focusAlertsEnabled = true
     @State private var launchAtLogin = SMAppService.mainApp.status == .enabled
 
     var body: some View {
         Form {
-            Toggle("Launch at login", isOn: $launchAtLogin)
-                .onChange(of: launchAtLogin) { _, on in
-                    do {
-                        if on { try SMAppService.mainApp.register() } else { try SMAppService.mainApp.unregister() }
-                    } catch {
-                        launchAtLogin = SMAppService.mainApp.status == .enabled
-                    }
+            Section("Startup") {
+                FeatureRow(title: "Launch at login", icon: "power", color: .gray,
+                           detail: "Start Dynamic Island automatically when you log in to your Mac.",
+                           isOn: Binding(get: { launchAtLogin }, set: setLaunchAtLogin))
+            }
+            Section {
+                if #available(macOS 26, *) {
+                    FeatureRow(title: "Liquid Glass", icon: "drop.fill", color: .cyan,
+                               detail: "Gives the island the translucent glass look of macOS 26 instead of solid black.",
+                               isOn: $useLiquidGlass)
+                } else {
+                    FeatureRow(title: "Liquid Glass", icon: "drop.fill", color: .cyan,
+                               detail: "Translucent glass look for the island. Requires macOS 26 or later.",
+                               isOn: .constant(false))
+                        .disabled(true)
                 }
-            Toggle(isOn: $hudEnabled) {
-                Text("Volume & brightness HUD")
-                Text("Replaces the macOS popup. Needs Accessibility permission.")
+            } header: {
+                Text("Appearance")
             }
-            Toggle(isOn: $batteryAlertsEnabled) {
-                Text("Battery alerts")
-                Text("Shows when the charger connects and at 20% / 10%.")
+            Section("How to use") {
+                InfoRow(icon: "cursorarrow.rays", color: .blue,
+                        text: "Move the pointer to the notch to open the island. Move away to close it.")
+                InfoRow(icon: "doc.on.doc.fill", color: .indigo,
+                        text: "Drag files onto the notch to keep them on the shelf or send them with AirDrop.")
+                InfoRow(icon: "bell.badge.fill", color: .orange,
+                        text: "Volume, brightness, battery and other alerts appear beside the notch for a few seconds.")
+                InfoRow(icon: "arrow.up.left.and.arrow.down.right", color: .gray,
+                        text: "In full screen the island hides what's playing, but alerts and hover still work.")
             }
-            Toggle(isOn: $downloadAlertsEnabled) {
-                Text("Download alerts")
-                Text("Shows when a download lands in your Downloads folder.")
-            }
-            Toggle(isOn: $headphoneAlertsEnabled) {
-                Text("Headphone alerts")
-                Text("Shows when AirPods or other Bluetooth headphones connect, with battery when available.")
-            }
-            Toggle(isOn: $focusAlertsEnabled) {
-                Text("Focus alerts")
-                Text("Shows when a Focus mode like Do Not Disturb turns on or off. Needs Full Disk Access.")
-            }
-            if focusAlertsEnabled && !Notices.canReadFocus {
-                Button("Grant Full Disk Access…") {
-                    NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles")!)
+            Section {
+                LabeledContent("Version", value: Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "")
+                LabeledContent("Quit Dynamic Island") {
+                    Button("Quit") { NSApp.terminate(nil) }
                 }
-            }
-            Toggle(isOn: $calendarEnabled) {
-                Text("Calendar")
-                Text("Shows your next meeting with a join button. Needs Calendar access.")
-            }
-            Toggle(isOn: $timerEnabled) {
-                Text("Timer")
-                Text("5 / 15 / 25 minute countdown beside the notch.")
-            }
-            Toggle(isOn: $airDropEnabled) {
-                Text("AirDrop drop zone")
-                Text("Drop files on the notch to send them with AirDrop.")
-            }
-            Toggle(isOn: $mirrorEnabled) {
-                Text("Camera mirror")
-                Text("Click the tile to check your camera. It turns off when the island closes.")
-            }
-            Toggle(isOn: $clipboardEnabled) {
-                Text("Clipboard history")
-                Text("Your last 20 copied texts. Kept in memory only; password manager copies are skipped.")
-            }
-            Toggle("File shelf", isOn: $shelfEnabled)
-            Toggle("Keep shelf files after restart", isOn: $keepShelf).disabled(!shelfEnabled)
-            if #available(macOS 26, *) {
-                Toggle("Liquid Glass", isOn: $useLiquidGlass)
-            } else {
-                Toggle("Liquid Glass (requires macOS 26)", isOn: .constant(false)).disabled(true)
             }
         }
         .formStyle(.grouped)
-        .frame(width: 400)
+    }
+
+    private func setLaunchAtLogin(_ on: Bool) {
+        do {
+            if on { try SMAppService.mainApp.register() } else { try SMAppService.mainApp.unregister() }
+        } catch {}
+        launchAtLogin = SMAppService.mainApp.status == .enabled
+    }
+}
+
+private struct IslandSettings: View {
+    let permissions: Permissions
+    @AppStorage(NowPlaying.activityKey) private var activityEnabled = true
+    @AppStorage(Agenda.enabledKey) private var calendarEnabled = true
+    @AppStorage(Countdown.enabledKey) private var timerEnabled = true
+    @AppStorage(CameraMirror.enabledKey) private var mirrorEnabled = true
+    @AppStorage(Clipboard.enabledKey) private var clipboardEnabled = true
+    @AppStorage(Shelf.enabledKey) private var shelfEnabled = true
+    @AppStorage(Shelf.keepKey) private var keepShelf = true
+    @AppStorage(DropZone.airDropKey) private var airDropEnabled = true
+
+    var body: some View {
+        Form {
+            Section {
+                FeatureRow(title: "Now playing beside the notch", icon: "waveform", color: .pink,
+                           detail: "While music or a video plays, shows the artwork and a live waveform. The player controls are always in the open island.",
+                           isOn: $activityEnabled)
+            } header: {
+                Text("Now Playing")
+            } footer: {
+                Text("Works with Music, Spotify, and videos in browsers like Edge, Safari and Chrome.")
+            }
+            Section("In the open island") {
+                FeatureRow(title: "Calendar", icon: "calendar", color: .red,
+                           detail: "Shows your current or next meeting at the top left, with a Join button for Zoom, Meet and Teams links.",
+                           isOn: $calendarEnabled, permission: .calendar, permissions: permissions)
+                FeatureRow(title: "Timer", icon: "timer", color: .orange,
+                           detail: "5, 15 and 25 minute timers at the top right. The countdown stays beside the notch, with a sound when it's done.",
+                           isOn: $timerEnabled)
+                FeatureRow(title: "Camera mirror", icon: "camera.fill", color: .green,
+                           detail: "Click the tile to check how you look before a call. The camera turns off when the island closes.",
+                           isOn: $mirrorEnabled, permission: .camera, permissions: permissions)
+                FeatureRow(title: "Clipboard history", icon: "doc.on.clipboard.fill", color: .indigo,
+                           detail: "Your last 20 copied texts. Click one to copy it again. Kept in memory only; password manager copies are skipped.",
+                           isOn: $clipboardEnabled)
+            }
+            Section("Files") {
+                FeatureRow(title: "File shelf", icon: "tray.full.fill", color: .blue,
+                           detail: "Drop files on the notch to hold them, then drag them out wherever you need them.",
+                           isOn: $shelfEnabled)
+                FeatureRow(title: "Keep shelf files after restart", icon: "arrow.clockwise", color: .blue,
+                           detail: "Files stay on the shelf when you quit the app or restart your Mac.",
+                           isOn: $keepShelf)
+                    .disabled(!shelfEnabled)
+                FeatureRow(title: "AirDrop drop zone", icon: "dot.radiowaves.up.forward", color: .cyan,
+                           detail: "While dragging files over the notch, drop them on the AirDrop zone to share them.",
+                           isOn: $airDropEnabled)
+            }
+        }
+        .formStyle(.grouped)
+    }
+}
+
+private struct AlertSettings: View {
+    let permissions: Permissions
+    @AppStorage(SystemHUD.enabledKey) private var hudEnabled = true
+    @AppStorage(Battery.enabledKey) private var batteryEnabled = true
+    @AppStorage(Notices.downloadsKey) private var downloadsEnabled = true
+    @AppStorage(Notices.headphonesKey) private var headphonesEnabled = true
+    @AppStorage(Notices.focusKey) private var focusEnabled = true
+
+    var body: some View {
+        Form {
+            Section {
+                FeatureRow(title: "Volume & brightness", icon: "speaker.wave.2.fill", color: .gray,
+                           detail: "Replaces the macOS popup with a slim bar beside the notch. Hold Shift + Option for finer steps.",
+                           isOn: $hudEnabled, permission: .accessibility, permissions: permissions)
+                FeatureRow(title: "Battery", icon: "battery.100percent.bolt", color: .green,
+                           detail: "Shows the level when you plug in the charger, and warns at 20% and 10%.",
+                           isOn: $batteryEnabled)
+                FeatureRow(title: "Downloads", icon: "arrow.down.circle.fill", color: .cyan,
+                           detail: "Shows when a download finishes in your Downloads folder.",
+                           isOn: $downloadsEnabled, permission: .downloads, permissions: permissions)
+                FeatureRow(title: "Headphones", icon: "headphones", color: .blue,
+                           detail: "Shows when AirPods or other Bluetooth headphones connect, with their battery level.",
+                           isOn: $headphonesEnabled, permission: .bluetooth, permissions: permissions)
+                FeatureRow(title: "Focus", icon: "moon.fill", color: .indigo,
+                           detail: "Shows when Do Not Disturb or another Focus mode turns on or off.",
+                           isOn: $focusEnabled, permission: .fullDiskAccess, permissions: permissions)
+            } header: {
+                Text("Beside the notch")
+            } footer: {
+                Text("Alerts show for a few seconds, also in full screen.")
+            }
+        }
+        .formStyle(.grouped)
+    }
+}
+
+private struct PermissionSettings: View {
+    let permissions: Permissions
+
+    var body: some View {
+        Form {
+            Section {
+                ForEach(Permission.allCases) { permission in
+                    HStack(spacing: 12) {
+                        SettingsIcon(name: permission.icon, color: permission.color)
+                        VStack(alignment: .leading, spacing: 3) {
+                            Text(permission.title)
+                            Text(permission.usage)
+                                .font(.callout)
+                                .foregroundStyle(.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                        Spacer(minLength: 16)
+                        if permissions.granted.contains(permission) {
+                            Label("Allowed", systemImage: "checkmark.circle.fill")
+                                .foregroundStyle(.green)
+                                .fixedSize()
+                        } else {
+                            Button("Grant Access") { permissions.request(permission) }
+                                .buttonStyle(.borderedProminent)
+                                .fixedSize()
+                        }
+                    }
+                    .padding(.vertical, 2)
+                }
+            } header: {
+                Text("System access")
+            } footer: {
+                Text("Grant Access shows the macOS prompt, or opens the right page in System Settings. Turn on Dynamic Island there and this page updates by itself.")
+            }
+        }
+        .formStyle(.grouped)
+    }
+}
+
+// MARK: - Rows
+
+/// A feature switch: colored icon, title, explanation, and a grant link while its permission is missing.
+private struct FeatureRow: View {
+    let title: String
+    let icon: String
+    let color: Color
+    let detail: String
+    @Binding var isOn: Bool
+    var permission: Permission?
+    var permissions: Permissions?
+
+    var body: some View {
+        Toggle(isOn: $isOn) {
+            HStack(alignment: .top, spacing: 12) {
+                SettingsIcon(name: icon, color: color)
+                VStack(alignment: .leading, spacing: 3) {
+                    Text(title)
+                    Text(detail)
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                    if isOn, let permission, let permissions, !permissions.granted.contains(permission) {
+                        Button {
+                            permissions.request(permission)
+                        } label: {
+                            Label("Needs \(permission.title) access. Grant…", systemImage: "exclamationmark.triangle.fill")
+                                .font(.callout)
+                                .foregroundStyle(.orange)
+                        }
+                        .buttonStyle(.plain)
+                        .padding(.top, 2)
+                    }
+                }
+            }
+            .padding(.vertical, 2)
+        }
+        .toggleStyle(.switch)
+    }
+}
+
+private struct InfoRow: View {
+    let icon: String
+    let color: Color
+    let text: String
+
+    var body: some View {
+        HStack(spacing: 12) {
+            SettingsIcon(name: icon, color: color)
+            Text(text)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+}
+
+/// White symbol on a colored rounded square, like System Settings.
+private struct SettingsIcon: View {
+    let name: String
+    let color: Color
+
+    var body: some View {
+        Image(systemName: name)
+            .font(.system(size: 13, weight: .semibold))
+            .foregroundStyle(.white)
+            .frame(width: 26, height: 26)
+            .background(color.gradient, in: RoundedRectangle(cornerRadius: 6, style: .continuous))
     }
 }

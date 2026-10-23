@@ -28,6 +28,8 @@ targets:
       path: DynamicIsland/Info.plist
       properties:
         CFBundleDisplayName: Dynamic Island
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         LSUIElement: true # no Dock icon, lives in the menu bar
         NSCalendarsFullAccessUsageDescription: Shows your next meeting in the island.
         NSCameraUsageDescription: Shows a camera mirror in the island when you click it.
