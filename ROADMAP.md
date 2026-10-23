@@ -7,7 +7,7 @@
 - [x] System HUDs: volume / brightness replace the macOS HUD (event tap, Accessibility). Keyboard backlight skipped: notched MacBooks have no backlight keys
 - [x] Battery: charger-connected and 20% / 10% low-battery alerts (IOKit power source notifications)
 - [x] Calendar: current / next event beside the notch with a join button for meeting links (EventKit)
-- [ ] Timer / Pomodoro
+- [x] Timer / Pomodoro: 5 / 15 / 25 min presets beside the notch, pause / stop, compact countdown, "Done" alert with sound
 - [ ] AirDrop drop target (`NSSharingService(named: .sendViaAirDrop)`)
 - [ ] Camera mirror (AVFoundation)
 - [ ] Clipboard history

@@ -21,7 +21,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let hud = SystemHUD()
     private let battery = Battery()
     private let agenda = Agenda()
-    private lazy var panel = NotchPanel(nowPlaying: nowPlaying, shelf: shelf, hud: hud, battery: battery, agenda: agenda)
+    private let countdown = Countdown()
+    private lazy var panel = NotchPanel(nowPlaying: nowPlaying, shelf: shelf, hud: hud, battery: battery,
+                                        agenda: agenda, countdown: countdown)
 
     func applicationWillTerminate(_ notification: Notification) {
         nowPlaying.stop()

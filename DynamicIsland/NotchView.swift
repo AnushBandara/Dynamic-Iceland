@@ -7,21 +7,25 @@ struct NotchView: View {
     let hud: SystemHUD
     let battery: Battery
     let agenda: Agenda
+    let countdown: Countdown
     @State private var isHovering = false
     @State private var isDropTargeted = false
     @AppStorage("useLiquidGlass") private var useLiquidGlass = false
     @AppStorage(Shelf.enabledKey) private var shelfEnabled = true
+    @AppStorage(Countdown.enabledKey) private var timerEnabled = true
 
     var body: some View {
         // Dragging a file onto the notch opens it too: hover doesn't fire during a drag.
         let isExpanded = isHovering || isDropTargeted
         let showsHUD = !isExpanded && hud.isVisible
         let showsBattery = !isExpanded && !showsHUD && battery.alert != nil
-        let showsActivity = !isExpanded && !showsHUD && !showsBattery && nowPlaying.isPlaying
+        let showsCountdown = !isExpanded && !showsHUD && !showsBattery && (countdown.isActive || countdown.isFinished)
+        let showsActivity = !isExpanded && !showsHUD && !showsBattery && !showsCountdown && nowPlaying.isPlaying
         let expandedSize = CGSize(width: shelfEnabled ? NotchPanel.expandedSize.width : 520,
                                   height: NotchPanel.expandedSize.height)
-        // Each side only as wide as its content: HUD bar / battery percentage, or artwork.
-        let wings: CGFloat = showsHUD || showsBattery ? 112 : showsActivity ? notchSize.height * 2 : 0
+        let cornerWidth = (expandedSize.width - notchSize.width) / 2 - 32 // strips beside the notch
+        // Each side only as wide as its content: HUD bar / battery percentage / time, or artwork.
+        let wings: CGFloat = showsHUD || showsBattery || showsCountdown ? 112 : showsActivity ? notchSize.height * 2 : 0
         let size = isExpanded ? expandedSize : CGSize(width: notchSize.width + wings, height: notchSize.height)
         let radius: CGFloat = isExpanded ? 24 : 10
         let shape = UnevenRoundedRectangle(bottomLeadingRadius: radius, bottomTrailingRadius: radius)
@@ -36,10 +40,17 @@ struct NotchView: View {
                 }
                 .padding(EdgeInsets(top: notchSize.height + 8, leading: 24, bottom: 16, trailing: 24))
                 .frame(width: expandedSize.width, height: expandedSize.height)
-                .overlay(alignment: .topLeading) { // the strip left of the notch
+                .overlay(alignment: .topLeading) {
                     AgendaHeaderView(agenda: agenda)
-                        .frame(width: (expandedSize.width - notchSize.width) / 2 - 32, height: notchSize.height)
+                        .frame(width: cornerWidth, height: notchSize.height)
                         .padding(.leading, 24)
+                }
+                .overlay(alignment: .topTrailing) {
+                    if timerEnabled || countdown.isActive {
+                        CountdownHeaderView(countdown: countdown)
+                            .frame(width: cornerWidth, height: notchSize.height)
+                            .padding(.trailing, 24)
+                    }
                 }
                 .transition(.opacity)
             } else if showsHUD {
@@ -48,6 +59,10 @@ struct NotchView: View {
                     .transition(.opacity)
             } else if showsBattery {
                 CompactBatteryView(battery: battery)
+                    .frame(maxHeight: .infinity)
+                    .transition(.opacity)
+            } else if showsCountdown {
+                CompactCountdownView(countdown: countdown)
                     .frame(maxHeight: .infinity)
                     .transition(.opacity)
             } else if showsActivity {
