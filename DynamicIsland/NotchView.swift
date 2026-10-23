@@ -19,6 +19,7 @@ struct NotchView: View {
     @AppStorage("useLiquidGlass") private var useLiquidGlass = false
     @AppStorage(Shelf.enabledKey) private var shelfEnabled = true
     @AppStorage(Clipboard.enabledKey) private var clipboardEnabled = true
+    @AppStorage(NowPlaying.activityKey) private var activityEnabled = true
     @AppStorage(DropZone.airDropKey) private var airDropEnabled = true
     @AppStorage(CameraMirror.enabledKey) private var mirrorEnabled = true
     @AppStorage(Countdown.enabledKey) private var timerEnabled = true
@@ -33,7 +34,7 @@ struct NotchView: View {
             && (countdown.isActive || countdown.isFinished)
         // The always-on now playing hides in full screen (e.g. over a video); alerts still show.
         let showsActivity = !isExpanded && !fullScreen.isActive && !showsHUD && !showsBattery && notice == nil
-            && !showsCountdown && nowPlaying.isPlaying
+            && !showsCountdown && activityEnabled && nowPlaying.isPlaying
         // Wider when the shelf / clipboard column (+120) or the mirror tile (+116) is on.
         let expandedSize = CGSize(width: 520 + (shelfEnabled || clipboardEnabled ? 120 : 0) + (mirrorEnabled ? 116 : 0),
                                   height: NotchPanel.expandedSize.height)

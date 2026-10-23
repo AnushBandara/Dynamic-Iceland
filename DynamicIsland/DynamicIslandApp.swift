@@ -12,11 +12,25 @@ struct DynamicIslandApp: App {
 
     var body: some Scene {
         MenuBarExtra("Dynamic Island", systemImage: "capsule.fill") {
-            SettingsLink()
+            SettingsButton()
             Divider()
             Button("Quit") { NSApp.terminate(nil) }.keyboardShortcut("q")
         }
         Settings { SettingsView() }
+    }
+}
+
+/// Opens Settings in front: the app has no Dock icon, so it has to activate itself first.
+private struct SettingsButton: View {
+    @Environment(\.openSettings) private var openSettings
+
+    var body: some View {
+        Button("Settings…") {
+            NSApp.activate(ignoringOtherApps: true)
+            openSettings()
+            SettingsView.bringToFront() // also when the window was already open behind other apps
+        }
+        .keyboardShortcut(",")
     }
 }
 

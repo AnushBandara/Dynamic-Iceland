@@ -36,7 +36,8 @@ final class Agenda {
         guard !isStarted else { return }
         isStarted = true
         Task {
-            guard (try? await store.requestFullAccessToEvents()) == true else { return }
+            // Not allowed yet: retry on the next settings change, e.g. after granting it from Settings.
+            guard (try? await store.requestFullAccessToEvents()) == true else { isStarted = false; return }
             NotificationCenter.default.addObserver(forName: .EKEventStoreChanged, object: store, queue: .main) { _ in
                 MainActor.assumeIsolated { self.refresh() }
             }

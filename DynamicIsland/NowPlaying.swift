@@ -5,6 +5,7 @@ import Observation
 /// mediaremote-adapter. Apps lost MediaRemote access in macOS 15.4; /usr/bin/perl still has it.
 @MainActor @Observable
 final class NowPlaying {
+    static let activityKey = "nowPlayingActivityEnabled" // artwork + waveform beside the notch
     enum Command: Int { case togglePlayPause = 2, nextTrack = 4, previousTrack = 5 }
 
     private(set) var title: String?
