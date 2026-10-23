@@ -25,8 +25,23 @@ struct CompactNoticeView: View {
                     Image(systemName: "checkmark.circle.fill")
                         .foregroundStyle(.green)
                 }
+            case .focus(_, let symbol, let tint, let isOn):
+                Image(systemName: symbol)
+                    .foregroundStyle(isOn ? Self.colors[tint] ?? .indigo : .secondary)
+                Spacer()
+                Text(isOn ? "On" : "Off")
+                    .font(.callout.weight(.semibold))
+                    .foregroundStyle(isOn ? Self.colors[tint] ?? .indigo : .secondary)
             }
         }
         .padding(.horizontal, 10)
     }
+
+    /// Focus tints as named in ModeConfigurations.json.
+    private static let colors: [String: Color] = [
+        "systemIndigoColor": .indigo, "systemPurpleColor": .purple, "systemBlueColor": .blue, "systemCyanColor": .cyan,
+        "systemTealColor": .teal, "systemMintColor": .mint, "systemGreenColor": .green, "systemYellowColor": .yellow,
+        "systemOrangeColor": .orange, "systemRedColor": .red, "systemPinkColor": .pink, "systemBrownColor": .brown,
+        "systemGrayColor": .gray,
+    ]
 }

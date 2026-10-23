@@ -14,6 +14,7 @@ struct SettingsView: View {
     @AppStorage(Clipboard.enabledKey) private var clipboardEnabled = true
     @AppStorage(Notices.downloadsKey) private var downloadAlertsEnabled = true
     @AppStorage(Notices.headphonesKey) private var headphoneAlertsEnabled = true
+    @AppStorage(Notices.focusKey) private var focusAlertsEnabled = true
     @State private var launchAtLogin = SMAppService.mainApp.status == .enabled
 
     var body: some View {
@@ -41,6 +42,15 @@ struct SettingsView: View {
             Toggle(isOn: $headphoneAlertsEnabled) {
                 Text("Headphone alerts")
                 Text("Shows when AirPods or other Bluetooth headphones connect, with battery when available.")
+            }
+            Toggle(isOn: $focusAlertsEnabled) {
+                Text("Focus alerts")
+                Text("Shows when a Focus mode like Do Not Disturb turns on or off. Needs Full Disk Access.")
+            }
+            if focusAlertsEnabled && !Notices.canReadFocus {
+                Button("Grant Full Disk Access…") {
+                    NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_AllFiles")!)
+                }
             }
             Toggle(isOn: $calendarEnabled) {
                 Text("Calendar")

@@ -12,4 +12,4 @@
 - [x] Camera mirror: click-to-start preview tile in the expanded island, camera off when it collapses (AVFoundation)
 - [x] Clipboard history: last 20 copied texts, click to copy again, shares the shelf column. Memory only, skips concealed (password manager) copies
 - [x] Download finished / headphones connected alerts: watches ~/Downloads (skips .crdownload etc.), Bluetooth audio connect with battery via private IOBluetoothDevice properties
-- [ ] Focus mode indicator. No public API, reading Focus state needs Full Disk Access
+- [x] Focus alerts: mode icon + On / Off when a Focus changes. No public API: reads ~/Library/DoNotDisturb/DB (Full Disk Access)
