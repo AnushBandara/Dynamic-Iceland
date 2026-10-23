@@ -34,7 +34,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         nowPlaying.start()
         fullScreen.start()
-        hud.fullScreen = fullScreen
         hud.start()
         battery.start()
         agenda.start()
