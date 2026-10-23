@@ -24,5 +24,7 @@
 	<true/>
 	<key>NSCalendarsFullAccessUsageDescription</key>
 	<string>Shows your next meeting in the island.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Shows a camera mirror in the island when you click it.</string>
 </dict>
 </plist>

@@ -30,10 +30,12 @@ targets:
         CFBundleDisplayName: Dynamic Island
         LSUIElement: true # no Dock icon, lives in the menu bar
         NSCalendarsFullAccessUsageDescription: Shows your next meeting in the island.
+        NSCameraUsageDescription: Shows a camera mirror in the island when you click it.
     entitlements:
       path: DynamicIsland/DynamicIsland.entitlements
       properties:
         com.apple.security.personal-information.calendars: true # hardened runtime blocks EventKit without it
+        com.apple.security.device.camera: true # likewise for the camera mirror
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: ai.olee.dynamicisland
