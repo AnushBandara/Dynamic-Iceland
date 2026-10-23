@@ -40,3 +40,10 @@ import Testing
     nowPlaying.apply(#"{"type":"data","diff":true,"payload":{"title":"Track 2"}}"#)
     #expect(nowPlaying.artwork != nil)
 }
+
+@Test func thumbnailsAreSmallAndKeepAspectRatio() {
+    let wide = NSImage(size: NSSize(width: 1024, height: 512))
+    #expect(wide.thumbnail().size == NSSize(width: 256, height: 128))
+    let small = NSImage(size: NSSize(width: 100, height: 100))
+    #expect(small.thumbnail().size == NSSize(width: 100, height: 100)) // never upscaled
+}

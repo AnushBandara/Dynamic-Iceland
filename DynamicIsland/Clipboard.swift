@@ -20,7 +20,7 @@ final class Clipboard {
     func start() {
         Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { _ in
             MainActor.assumeIsolated { self.poll() }
-        }
+        }.tolerance = 0.25 // lets macOS batch the wake-up with others
     }
 
     private func poll() {

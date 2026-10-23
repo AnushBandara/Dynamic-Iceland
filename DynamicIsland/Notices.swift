@@ -37,7 +37,7 @@ final class Notices: NSObject {
         // ponytail: polls a ~2 KB file each second; a file watch if it ever shows up in profiles
         Timer.scheduledTimer(withTimeInterval: 1, repeats: true) { _ in
             MainActor.assumeIsolated { self.checkFocus() }
-        }
+        }.tolerance = 0.5 // lets macOS batch the wake-up with others
         NotificationCenter.default.addObserver(forName: UserDefaults.didChangeNotification, object: nil, queue: .main) { _ in
             MainActor.assumeIsolated { self.startEnabledWatchers() }
         }
