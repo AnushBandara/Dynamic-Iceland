@@ -22,9 +22,13 @@
 	<string>1</string>
 	<key>LSUIElement</key>
 	<true/>
+	<key>NSBluetoothAlwaysUsageDescription</key>
+	<string>Shows an alert in the island when your headphones connect.</string>
 	<key>NSCalendarsFullAccessUsageDescription</key>
 	<string>Shows your next meeting in the island.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>Shows a camera mirror in the island when you click it.</string>
+	<key>NSDownloadsFolderUsageDescription</key>
+	<string>Shows an alert in the island when a download finishes.</string>
 </dict>
 </plist>

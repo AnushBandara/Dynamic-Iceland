@@ -12,6 +12,8 @@ struct SettingsView: View {
     @AppStorage(CameraMirror.enabledKey) private var mirrorEnabled = true
     @AppStorage(Shelf.keepKey) private var keepShelf = true
     @AppStorage(Clipboard.enabledKey) private var clipboardEnabled = true
+    @AppStorage(Notices.downloadsKey) private var downloadAlertsEnabled = true
+    @AppStorage(Notices.headphonesKey) private var headphoneAlertsEnabled = true
     @State private var launchAtLogin = SMAppService.mainApp.status == .enabled
 
     var body: some View {
@@ -31,6 +33,14 @@ struct SettingsView: View {
             Toggle(isOn: $batteryAlertsEnabled) {
                 Text("Battery alerts")
                 Text("Shows when the charger connects and at 20% / 10%.")
+            }
+            Toggle(isOn: $downloadAlertsEnabled) {
+                Text("Download alerts")
+                Text("Shows when a download lands in your Downloads folder.")
+            }
+            Toggle(isOn: $headphoneAlertsEnabled) {
+                Text("Headphone alerts")
+                Text("Shows when AirPods or other Bluetooth headphones connect, with battery when available.")
             }
             Toggle(isOn: $calendarEnabled) {
                 Text("Calendar")
