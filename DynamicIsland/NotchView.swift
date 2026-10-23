@@ -10,11 +10,14 @@ struct NotchView: View {
     let countdown: Countdown
     let mirror: CameraMirror
     let fullScreen: FullScreen
+    let clipboard: Clipboard
     @State private var isHovering = false
     @State private var isDropTargeted = false
     @State private var dropZone: DropZone?
+    @State private var showsClipboard = false
     @AppStorage("useLiquidGlass") private var useLiquidGlass = false
     @AppStorage(Shelf.enabledKey) private var shelfEnabled = true
+    @AppStorage(Clipboard.enabledKey) private var clipboardEnabled = true
     @AppStorage(DropZone.airDropKey) private var airDropEnabled = true
     @AppStorage(CameraMirror.enabledKey) private var mirrorEnabled = true
     @AppStorage(Countdown.enabledKey) private var timerEnabled = true
@@ -28,8 +31,8 @@ struct NotchView: View {
         // The always-on now playing hides in full screen (e.g. over a video); alerts still show.
         let showsActivity = !isExpanded && !fullScreen.isActive && !showsHUD && !showsBattery && !showsCountdown
             && nowPlaying.isPlaying
-        // Wider when the shelf (+120) or the mirror tile (+116) is on.
-        let expandedSize = CGSize(width: 520 + (shelfEnabled ? 120 : 0) + (mirrorEnabled ? 116 : 0),
+        // Wider when the shelf / clipboard column (+120) or the mirror tile (+116) is on.
+        let expandedSize = CGSize(width: 520 + (shelfEnabled || clipboardEnabled ? 120 : 0) + (mirrorEnabled ? 116 : 0),
                                   height: NotchPanel.expandedSize.height)
         let cornerWidth = (expandedSize.width - notchSize.width) / 2 - 32 // strips beside the notch
         // Each side only as wide as its content: HUD bar / battery percentage / time, or artwork.
@@ -50,8 +53,8 @@ struct NotchView: View {
                                 MirrorView(mirror: mirror)
                             }
                             NowPlayingView(nowPlaying: nowPlaying)
-                            if shelfEnabled {
-                                ShelfView(shelf: shelf).frame(width: 200)
+                            if shelfEnabled || clipboardEnabled {
+                                trayColumn.frame(width: 200)
                             }
                         }
                     }
@@ -102,6 +105,26 @@ struct NotchView: View {
         .animation(.spring(response: 0.35, dampingFraction: 0.8), value: size)
         .environment(\.colorScheme, .dark)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+    }
+
+    /// Shelf and clipboard share one column, with a switch when both are on.
+    private var trayColumn: some View {
+        VStack(spacing: 6) {
+            if shelfEnabled && clipboardEnabled {
+                Picker("", selection: $showsClipboard) {
+                    Image(systemName: "tray").tag(false)
+                    Image(systemName: "doc.on.clipboard").tag(true)
+                }
+                .pickerStyle(.segmented)
+                .labelsHidden()
+                .controlSize(.small)
+            }
+            if clipboardEnabled && (showsClipboard || !shelfEnabled) {
+                ClipboardView(clipboard: clipboard)
+            } else {
+                ShelfView(shelf: shelf)
+            }
+        }
     }
 }
 

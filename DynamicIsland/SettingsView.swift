@@ -11,6 +11,7 @@ struct SettingsView: View {
     @AppStorage(DropZone.airDropKey) private var airDropEnabled = true
     @AppStorage(CameraMirror.enabledKey) private var mirrorEnabled = true
     @AppStorage(Shelf.keepKey) private var keepShelf = true
+    @AppStorage(Clipboard.enabledKey) private var clipboardEnabled = true
     @State private var launchAtLogin = SMAppService.mainApp.status == .enabled
 
     var body: some View {
@@ -46,6 +47,10 @@ struct SettingsView: View {
             Toggle(isOn: $mirrorEnabled) {
                 Text("Camera mirror")
                 Text("Click the tile to check your camera. It turns off when the island closes.")
+            }
+            Toggle(isOn: $clipboardEnabled) {
+                Text("Clipboard history")
+                Text("Your last 20 copied texts. Kept in memory only; password manager copies are skipped.")
             }
             Toggle("File shelf", isOn: $shelfEnabled)
             Toggle("Keep shelf files after restart", isOn: $keepShelf).disabled(!shelfEnabled)

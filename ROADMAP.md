@@ -10,6 +10,6 @@
 - [x] Timer / Pomodoro: 5 / 15 / 25 min presets beside the notch, pause / stop, compact countdown, "Done" alert with sound
 - [x] AirDrop drop target: Shelf / AirDrop drop zones while dragging files over the island (`NSSharingService`)
 - [x] Camera mirror: click-to-start preview tile in the expanded island, camera off when it collapses (AVFoundation)
-- [ ] Clipboard history
+- [x] Clipboard history: last 20 copied texts, click to copy again, shares the shelf column. Memory only, skips concealed (password manager) copies
 - [ ] Download finished / AirPods connected alerts
 - [ ] Focus mode indicator. No public API, reading Focus state needs Full Disk Access

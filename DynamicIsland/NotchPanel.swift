@@ -13,12 +13,14 @@ final class NotchPanel: NSPanel {
     private let countdown: Countdown
     private let mirror: CameraMirror
     private let fullScreen: FullScreen
+    private let clipboard: Clipboard
 
     init(nowPlaying: NowPlaying, shelf: Shelf, hud: SystemHUD, battery: Battery, agenda: Agenda,
-         countdown: Countdown, mirror: CameraMirror, fullScreen: FullScreen) {
+         countdown: Countdown, mirror: CameraMirror, fullScreen: FullScreen, clipboard: Clipboard) {
         self.countdown = countdown
         self.mirror = mirror
         self.fullScreen = fullScreen
+        self.clipboard = clipboard
         self.nowPlaying = nowPlaying
         self.shelf = shelf
         self.hud = hud
@@ -42,7 +44,7 @@ final class NotchPanel: NSPanel {
         setFrame(CGRect(x: screen.frame.midX - size.width / 2, y: screen.frame.maxY - size.height,
                         width: size.width, height: size.height), display: true)
 
-        let hosting = HostingView(rootView: NotchView(notchSize: screen.notchSize, nowPlaying: nowPlaying, shelf: shelf, hud: hud, battery: battery, agenda: agenda, countdown: countdown, mirror: mirror, fullScreen: fullScreen))
+        let hosting = HostingView(rootView: NotchView(notchSize: screen.notchSize, nowPlaying: nowPlaying, shelf: shelf, hud: hud, battery: battery, agenda: agenda, countdown: countdown, mirror: mirror, fullScreen: fullScreen, clipboard: clipboard))
         hosting.sizingOptions = []
         contentView = hosting
     }
