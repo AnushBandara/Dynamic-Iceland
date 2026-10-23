@@ -4,11 +4,13 @@ import SwiftUI
 /// Borderless, transparent panel pinned over the notch. Sized for the expanded
 /// island; transparent pixels let clicks pass through to the menu bar.
 final class NotchPanel: NSPanel {
-    static let expandedSize = CGSize(width: 520, height: 180)
+    static let expandedSize = CGSize(width: 640, height: 180)
     private let nowPlaying: NowPlaying
+    private let shelf: Shelf
 
-    init(nowPlaying: NowPlaying) {
+    init(nowPlaying: NowPlaying, shelf: Shelf) {
         self.nowPlaying = nowPlaying
+        self.shelf = shelf
         super.init(contentRect: .zero, styleMask: [.borderless, .nonactivatingPanel], backing: .buffered, defer: false)
         isOpaque = false
         backgroundColor = .clear
@@ -27,7 +29,7 @@ final class NotchPanel: NSPanel {
         setFrame(CGRect(x: screen.frame.midX - size.width / 2, y: screen.frame.maxY - size.height,
                         width: size.width, height: size.height), display: true)
 
-        let hosting = HostingView(rootView: NotchView(notchSize: screen.notchSize, nowPlaying: nowPlaying))
+        let hosting = HostingView(rootView: NotchView(notchSize: screen.notchSize, nowPlaying: nowPlaying, shelf: shelf))
         hosting.sizingOptions = []
         contentView = hosting
     }

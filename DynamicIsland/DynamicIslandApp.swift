@@ -17,7 +17,8 @@ struct DynamicIslandApp: App {
 @MainActor
 final class AppDelegate: NSObject, NSApplicationDelegate {
     private let nowPlaying = NowPlaying()
-    private lazy var panel = NotchPanel(nowPlaying: nowPlaying)
+    private let shelf = Shelf()
+    private lazy var panel = NotchPanel(nowPlaying: nowPlaying, shelf: shelf)
 
     func applicationWillTerminate(_ notification: Notification) {
         nowPlaying.stop()

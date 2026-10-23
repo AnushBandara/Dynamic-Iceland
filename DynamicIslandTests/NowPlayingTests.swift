@@ -3,9 +3,10 @@ import Testing
 @testable import DynamicIsland
 
 @MainActor @Test func collapsedIslandRendersWithNothingPlaying() {
-    let view = NotchView(notchSize: CGSize(width: 200, height: 32), nowPlaying: NowPlaying())
-    let image = NSBitmapImageRep(cgImage: ImageRenderer(content: view.frame(width: 520, height: 180)).cgImage!)
-    #expect(image.colorAt(x: 260, y: 10)?.alphaComponent == 1) // black island under the notch
+    let shelf = Shelf(defaults: UserDefaults(suiteName: "NotchViewTests")!)
+    let view = NotchView(notchSize: CGSize(width: 200, height: 32), nowPlaying: NowPlaying(), shelf: shelf)
+    let image = NSBitmapImageRep(cgImage: ImageRenderer(content: view.frame(width: 640, height: 180)).cgImage!)
+    #expect(image.colorAt(x: 320, y: 10)?.alphaComponent == 1) // black island under the notch
 }
 
 @MainActor @Test func streamDiffsMergeIntoFullState() {
