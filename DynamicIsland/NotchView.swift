@@ -35,9 +35,11 @@ struct NotchView: View {
                 .transition(.opacity)
             } else if showsHUD {
                 CompactHUDView(hud: hud, height: notchSize.height)
+                    .frame(maxHeight: .infinity) // centre vertically; the island aligns content to the top
                     .transition(.opacity)
             } else if showsActivity {
                 CompactNowPlayingView(nowPlaying: nowPlaying, height: notchSize.height)
+                    .frame(maxHeight: .infinity)
                     .transition(.opacity)
             }
         }
