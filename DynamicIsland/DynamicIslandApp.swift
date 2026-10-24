@@ -13,6 +13,9 @@ struct DynamicIslandApp: App {
         if let flag = CommandLine.arguments.firstIndex(of: Notices.batteryFlag), flag + 1 < CommandLine.arguments.count {
             Notices.printBatteryAndExit(address: CommandLine.arguments[flag + 1])
         }
+        if CommandLine.arguments.contains(Notices.claudeHookFlag) {
+            Notices.forwardClaudeHookAndExit()
+        }
     }
 
     var body: some Scene {

@@ -206,6 +206,8 @@ private struct AlertSettings: View {
     @AppStorage(Notices.downloadsKey) private var downloadsEnabled = true
     @AppStorage(Notices.headphonesKey) private var headphonesEnabled = true
     @AppStorage(Notices.focusKey) private var focusEnabled = true
+    @AppStorage(Notices.claudeKey) private var claudeEnabled = false
+    @AppStorage(Notices.claudeMessageKey) private var claudeMessages = true
 
     var body: some View {
         Form {
@@ -225,6 +227,18 @@ private struct AlertSettings: View {
                 FeatureRow(title: "Focus", icon: "moon.fill", color: .indigo,
                            detail: "Shows when Do Not Disturb or another Focus mode turns on or off.",
                            isOn: $focusEnabled, permission: .fullDiskAccess, permissions: permissions)
+                FeatureRow(title: "Claude Code", icon: "asterisk", color: .orange,
+                           detail: "Shows when Claude Code needs your approval or reply, and when it finishes. Adds hooks to ~/.claude/settings.json; restart open sessions.",
+                           isOn: $claudeEnabled)
+                    .onChange(of: claudeEnabled) { _, on in
+                        // settings.json isn't valid JSON: stay off. Off never flips back, so this can't loop.
+                        if !Notices.setClaudeHooks(installed: on), on { claudeEnabled = false }
+                    }
+                Picker("Claude Code alert style", selection: $claudeMessages) {
+                    Text("Icon only").tag(false)
+                    Text("With message").tag(true)
+                }
+                .disabled(!claudeEnabled)
             } header: {
                 Text("Beside the notch")
             } footer: {

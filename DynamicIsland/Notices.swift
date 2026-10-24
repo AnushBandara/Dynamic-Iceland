@@ -3,13 +3,16 @@ import IOBluetooth
 import Observation
 
 /// Short alerts beside the notch: a download finished in ~/Downloads, Bluetooth headphones connected,
-/// or a Focus mode turned on / off.
+/// a Focus mode turned on / off, or Claude Code needs you / finished.
 /// Each watcher starts only once its setting is on, so the Downloads / Bluetooth prompts wait until then.
 @MainActor @Observable
 final class Notices: NSObject {
     static let downloadsKey = "downloadAlertsEnabled"
     static let headphonesKey = "headphoneAlertsEnabled"
     static let focusKey = "focusAlertsEnabled"
+    static let claudeKey = "claudeAlertsEnabled"
+    static let claudeMessageKey = "claudeAlertMessages"
+    static let claudeHintKey = "claudeAlertsOffered"
     // Browsers write to these, then rename to the real name when the download completes.
     nonisolated static let partialExtensions: Set<String> = ["crdownload", "download", "part", "partial"]
 
@@ -17,7 +20,18 @@ final class Notices: NSObject {
         case downloaded(URL)
         case headphones(name: String, battery: Int?)
         case focus(name: String, symbol: String, tint: String, isOn: Bool)
+        case claude(ClaudeEvent, project: String, message: String)
+        case claudeHint // once, offering the Claude Code alerts
+
+        var isClaude: Bool {
+            switch self {
+            case .claude, .claudeHint: true
+            default: false
+            }
+        }
     }
+
+    enum ClaudeEvent { case approval, input, done }
 
     private(set) var current: Notice?
 
@@ -29,15 +43,26 @@ final class Notices: NSObject {
     @ObservationIgnored private var focusRetry: Task<Void, Never>?
     @ObservationIgnored private var focusMode: String?? // nil until first read: the starting state isn't a change
     @ObservationIgnored private var hideTask: Task<Void, Never>?
+    @ObservationIgnored private var claudeApp: NSRunningApplication?
 
     override init() {
-        UserDefaults.standard.register(defaults: [Self.downloadsKey: true, Self.headphonesKey: true, Self.focusKey: true])
+        UserDefaults.standard.register(defaults: [Self.downloadsKey: true, Self.headphonesKey: true, Self.focusKey: true, Self.claudeKey: false, Self.claudeMessageKey: true])
     }
 
     func start() {
         startEnabledWatchers()
+        setUpClaude()
         NotificationCenter.default.addObserver(forName: UserDefaults.didChangeNotification, object: nil, queue: .main) { _ in
             MainActor.assumeIsolated { self.startEnabledWatchers() }
+        }
+        DistributedNotificationCenter.default().addObserver(forName: Self.claudeNotification, object: nil, queue: .main) { note in
+            let input = note.userInfo?["input"] as? String
+            let app = note.userInfo?["app"] as? Int
+            MainActor.assumeIsolated {
+                guard self.isEnabled(Self.claudeKey), let notice = Self.claudeNotice(hookInput: Data((input ?? "").utf8)) else { return }
+                self.claudeApp = app.flatMap { NSRunningApplication(processIdentifier: pid_t($0)) }
+                self.show(notice, for: 6) // long enough to read the message
+            }
         }
     }
 
@@ -204,6 +229,153 @@ final class Notices: NSObject {
         let mode = ((store?["modeConfigurations"] as? [String: Any])?[id] as? [String: Any])?["mode"] as? [String: Any]
         return (mode?["name"] as? String ?? "Focus", mode?["symbolImageName"] as? String ?? "moon.fill",
                 mode?["tintColorName"] as? String ?? "systemIndigoColor")
+    }
+
+    // MARK: Claude Code
+
+    nonisolated static let claudeHookFlag = "--claude-hook"
+    private nonisolated static let claudeNotification = Notification.Name("io.github.anushbandara.dynamicisland.claude")
+    nonisolated static let claudeSettingsFile = FileManager.default.homeDirectoryForCurrentUser
+        .appending(path: ".claude/settings.json")
+
+    /// Helper mode, run by Claude Code's hooks: hands the hook's JSON to the running app and exits.
+    /// Delivered immediately: the app is never active, which would otherwise hold it back.
+    nonisolated static func forwardClaudeHookAndExit() -> Never {
+        let input = String(decoding: FileHandle.standardInput.readDataToEndOfFile(), as: UTF8.self)
+        var info: [String: Any] = ["input": input]
+        info["app"] = hostApp().map { Int($0) }
+        DistributedNotificationCenter.default().postNotificationName(claudeNotification, object: nil,
+                                                                     userInfo: info, deliverImmediately: true)
+        exit(0)
+    }
+
+    /// At launch: points the hooks at this copy of the app (it may have moved, e.g. into Applications),
+    /// or offers the alerts once. Never from the test host, which would point the hooks at a build folder.
+    private func setUpClaude() {
+        guard ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] == nil else { return }
+        if isEnabled(Self.claudeKey) { _ = Self.setClaudeHooks(installed: true) } else { offerClaudeAlerts() }
+    }
+
+    /// Once, a few seconds after launch: when Claude Code is installed and its alerts are off, offer them.
+    // ponytail: offered once even if a HUD covered it; Settings > Alerts is the way back
+    private func offerClaudeAlerts() {
+        guard !isEnabled(Self.claudeHintKey),
+              FileManager.default.fileExists(atPath: Self.claudeSettingsFile.deletingLastPathComponent().path) else { return }
+        UserDefaults.standard.set(true, forKey: Self.claudeHintKey)
+        Task {
+            try? await Task.sleep(for: .seconds(3))
+            show(.claudeHint, for: 10)
+        }
+    }
+
+    /// Clicking the offer: turns the alerts on, then says so.
+    func acceptClaudeHint() {
+        claudeApp = nil
+        if Self.setClaudeHooks(installed: true) {
+            UserDefaults.standard.set(true, forKey: Self.claudeKey)
+            show(.claude(.done, project: "", message: "Claude Code alerts on. Restart open sessions"), for: 4)
+        } else {
+            show(.claude(.input, project: "", message: "Couldn't update ~/.claude/settings.json"), for: 6)
+        }
+    }
+
+    /// The app Claude Code runs in (Terminal, VS Code, the Claude app…): the nearest regular app
+    /// above this helper. nil when there is none, e.g. inside tmux, whose server has no app above it.
+    private nonisolated static func hostApp() -> pid_t? {
+        var pid = getppid()
+        while pid > 1 {
+            if NSRunningApplication(processIdentifier: pid)?.activationPolicy == .regular { return pid }
+            var process = kinfo_proc()
+            var size = MemoryLayout<kinfo_proc>.stride
+            var query = [CTL_KERN, KERN_PROC, KERN_PROC_PID, pid]
+            guard sysctl(&query, 4, &process, &size, nil, 0) == 0, size > 0 else { return nil }
+            pid = process.kp_eproc.e_ppid
+        }
+        return nil
+    }
+
+    /// Clicking a Claude Code alert: brings its app forward and dismisses the alert.
+    // ponytail: the app, not the exact window or tab; VS Code with several windows shows its last-used one
+    func openClaudeApp() {
+        if let url = claudeApp?.bundleURL {
+            // Opening, not activate(): an app that isn't active itself can't hand activation to another.
+            NSWorkspace.shared.openApplication(at: url, configuration: NSWorkspace.OpenConfiguration())
+        }
+        hideTask?.cancel()
+        current = nil
+    }
+
+    /// Stop: Claude finished its turn. Notification: it wants a permission, or is waiting for your reply.
+    /// The message is Claude Code's own ("Claude needs your permission to use Bash"), or for Stop the
+    /// first line of Claude's last reply, read from the session transcript.
+    nonisolated static func claudeNotice(hookInput: Data) -> Notice? {
+        guard let input = (try? JSONSerialization.jsonObject(with: hookInput)) as? [String: Any] else { return nil }
+        let project = ((input["cwd"] as? String ?? "") as NSString).lastPathComponent
+        let message = input["message"] as? String ?? ""
+        switch (input["hook_event_name"] as? String, input["notification_type"] as? String) {
+        case ("Stop", _):
+            let reply = (input["transcript_path"] as? String).flatMap { lastReply(transcript: URL(filePath: $0)) }
+            return .claude(.done, project: project, message: reply ?? "Finished")
+        case ("Notification", "permission_prompt"): return .claude(.approval, project: project, message: message)
+        case ("Notification", "idle_prompt"), ("Notification", "elicitation_dialog"):
+            return .claude(.input, project: project, message: message)
+        default: return nil
+        }
+    }
+
+    /// First line of the newest assistant text in a transcript (JSON lines), without Markdown marks.
+    /// Only the end of the file is read: transcripts grow to megabytes.
+    nonisolated static func lastReply(transcript: URL) -> String? {
+        guard let file = try? FileHandle(forReadingFrom: transcript) else { return nil }
+        defer { try? file.close() }
+        let size = (try? file.seekToEnd()) ?? 0
+        try? file.seek(toOffset: size > 262_144 ? size - 262_144 : 0)
+        let tail = String(decoding: (try? file.readToEnd()) ?? Data(), as: UTF8.self)
+        for line in tail.split(separator: "\n").reversed() where line.contains(#""type":"assistant""#) {
+            guard let entry = (try? JSONSerialization.jsonObject(with: Data(line.utf8))) as? [String: Any],
+                  entry["isSidechain"] as? Bool != true, // a subagent's reply, not Claude's
+                  let content = (entry["message"] as? [String: Any])?["content"] as? [[String: Any]],
+                  let text = content.last(where: { $0["type"] as? String == "text" })?["text"] as? String
+            else { continue }
+            let first = text.split(separator: "\n").lazy
+                .map { $0.replacingOccurrences(of: "**", with: "").replacingOccurrences(of: "`", with: "")
+                    .trimmingCharacters(in: CharacterSet(charactersIn: "#-*> ").union(.whitespaces)) }
+                .first { !$0.isEmpty }
+            if let first { return first }
+        }
+        return nil
+    }
+
+    /// ~/.claude/settings.json with this app's Notification and Stop hooks added (`command`) or removed (nil),
+    /// leaving every other hook alone. nil when the existing file isn't valid JSON, so it's never overwritten.
+    nonisolated static func claudeSettings(_ data: Data?, hookCommand command: String?) -> Data? {
+        let parsed = data.map { (try? JSONSerialization.jsonObject(with: $0)) as? [String: Any] } ?? [:]
+        guard var root = parsed else { return nil }
+        var hooks = root["hooks"] as? [String: Any] ?? [:]
+        for event in ["Notification", "Stop"] {
+            var groups = (hooks[event] as? [[String: Any]] ?? []).compactMap { group -> [String: Any]? in
+                let entries = group["hooks"] as? [[String: Any]] ?? []
+                let others = entries.filter { ($0["command"] as? String)?.contains(claudeHookFlag) != true }
+                guard others.count != entries.count else { return group }
+                return others.isEmpty ? nil : group.merging(["hooks": others]) { $1 }
+            }
+            if let command { groups.append(["hooks": [["type": "command", "command": command]]]) }
+            hooks[event] = groups.isEmpty ? nil : groups
+        }
+        root["hooks"] = hooks.isEmpty ? nil : hooks
+        return try? JSONSerialization.data(withJSONObject: root, options: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes])
+    }
+
+    /// Adds or removes the hooks, writing only when that changes the file. Through a symlink (dotfiles
+    /// repos), not over it. Running Claude Code sessions pick the hooks up when restarted.
+    nonisolated static func setClaudeHooks(installed: Bool) -> Bool {
+        let file = claudeSettingsFile.resolvingSymlinksInPath()
+        let command = installed ? "\"\(Bundle.main.executablePath ?? "")\" \(claudeHookFlag)" : nil
+        let existing = try? Data(contentsOf: file)
+        guard let data = claudeSettings(existing, hookCommand: command) else { return false }
+        guard data != existing else { return true }
+        try? FileManager.default.createDirectory(at: file.deletingLastPathComponent(), withIntermediateDirectories: true)
+        return (try? data.write(to: file, options: .atomic)) != nil
     }
 
     private func show(_ notice: Notice, for seconds: Double = 3) {

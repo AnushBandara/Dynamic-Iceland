@@ -15,3 +15,4 @@
 - [x] Focus alerts: mode icon + On / Off when a Focus changes. No public API: reads ~/Library/DoNotDisturb/DB (Full Disk Access)
 - [x] Notes, to-dos and Shortcuts tabs in the right column; pin the island open (also while typing)
 - [x] Auto-updates (Sparkle, from GitHub Releases) and a Developer ID / notarization release script (`scripts/release.sh`). Needs a Developer ID certificate and the GitHub repo before the first release
+- [x] Claude Code alerts: approval needed / waiting for you / finished, via Notification and Stop hooks that run the app as `--claude-hook` (distributed notification to the running app). Message line (Claude Code's text, or the last reply from the transcript) or icons only; click to bring the host app forward; offered once when ~/.claude exists
