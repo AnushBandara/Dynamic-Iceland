@@ -14,6 +14,7 @@
 <p align="center">
   <a href="#download">Download</a> ·
   <a href="#features">Features</a> ·
+  <a href="#claude-code-alerts">Claude Code</a> ·
   <a href="#privacy">Privacy</a> ·
   <a href="#permissions">Permissions</a> ·
   <a href="#faq">FAQ</a> ·
@@ -25,6 +26,14 @@
 **Dynamic Iceland** turns the MacBook notch into a small, live iceland. Music, your next meeting, a timer, a file shelf, clipboard history and quick alerts live right where the notch is, out of the way until you need them.
 
 Hover over the notch to open it, or press <kbd>⌃</kbd> <kbd>⌥</kbd> <kbd>I</kbd> from anywhere. It's a native Mac app with no Dock icon, and it stays idle when nothing is happening.
+
+> [!TIP]
+> **New in 1.1: Claude Code alerts.** The iceland now tells you when Claude Code needs your approval, is waiting for your reply, or has finished, with its message right under the notch. Click the alert to jump back to your terminal or editor. [See how it works](#claude-code-alerts).
+
+<p align="center">
+  <img src="resources/screenshots/claude.png" alt="A Claude Code alert under the notch: an orange asterisk, a raised hand, and the message 'Claude needs your permission to use Bash' with the project name my-app" width="440">
+</p>
+<p align="center"><sub>New: Claude Code asking for permission, right under the notch</sub></p>
 
 <p align="center">
   <img src="resources/screenshots/desktop.jpg" alt="Dynamic Iceland open on a MacBook desktop, with the next meeting, now playing and the file shelf around the notch" width="100%">
@@ -52,6 +61,25 @@ The app is signed and notarized by Apple, so it opens without warnings. It updat
 **Requires** macOS 14 Sonoma or later. Made for MacBooks with a notch; on other Macs it sits at the top centre of the screen.
 
 ## Features
+
+### Claude Code alerts
+
+<sup>🆕 New in 1.1</sup>
+
+Using [Claude Code](https://claude.com/claude-code)? Let it work while you do something else: the iceland tells you when it needs you.
+
+| | |
+|---|---|
+| ✋ **Needs approval** | Claude wants permission to run something, e.g. *"Claude needs your permission to use Bash"*. |
+| 💬 **Waiting for you** | Claude has been waiting for your reply. |
+| ✅ **Finished** | Claude is done, with the first line of its reply, e.g. *"Fixed the login bug and added a test"*. |
+
+- **Click an alert** to jump straight to the app Claude Code runs in: Terminal, iTerm, VS Code, or the Claude app.
+- **Message or icons only.** Show the message under the notch, or keep it to two small icons beside it.
+- **The project name** shows next to the message, so you know which session needs you.
+- **Turning it on:** the iceland offers it once when it finds Claude Code on your Mac. You can also turn on **Claude Code** in Settings → Alerts. Then restart any open Claude Code sessions.
+
+Works with Claude Code in the terminal, in VS Code and other editors, and in the Claude app's Code tab. Regular chats in the Claude app don't send alerts.
 
 ### In the iceland
 
@@ -86,7 +114,7 @@ Dragging files over the notch also shows an **AirDrop** zone, to send them strai
 | 🎧 **Headphones** | AirPods or other Bluetooth headphones connected, with their battery. |
 | ⬇️ **Downloads** | A note when a download finishes. |
 | 🌙 **Focus** | Do Not Disturb or another Focus turning on or off. |
-| ✳️ **Claude Code** | Claude Code needs your approval or reply, or finished its task, as icons or with the message and the first line of Claude's reply. Off by default: offered once in the island when Claude Code is installed, or turn it on in Settings. Turning it on adds hooks to `~/.claude/settings.json`; click an alert to jump to Claude. |
+| ✳️ **Claude Code** | Needs your approval, waiting for you, or finished. [More above](#claude-code-alerts). |
 
 When several things happen at once, the iceland shows the most important first: volume and brightness, then battery, then other alerts, then the timer, then now playing.
 
@@ -99,6 +127,7 @@ Dynamic Iceland is built to be trusted with what's on your screen.
 - **The camera** runs only while the mirror tile is open.
 - **Your Downloads folder** is watched for new files; files are never opened or read.
 - **Calendar events** are read on your Mac only, to show the next one.
+- **Claude Code alerts** are off until you turn them on. Turning them on adds two hooks to `~/.claude/settings.json`, and turning them off removes them; your other settings stay as they are. To show Claude's last reply, the app reads the end of that session's transcript, on your Mac only.
 
 ## Permissions
 
@@ -137,6 +166,9 @@ No. It mostly reacts to system events instead of constantly checking, and uses a
 **How do I hide the menu bar icon?**
 Settings → General → Show menu bar icon. To get back to Settings, click the gear in the open iceland, or open the app again from Applications.
 
+**I deleted the app and now Claude Code shows a hook error.**
+Turn off **Claude Code** in Settings → Alerts before deleting the app, and it removes its hooks. If the app is already gone, open `~/.claude/settings.json` and delete the two hooks whose command ends in `--claude-hook` (under `Notification` and `Stop`).
+
 **How do updates work?**
 The app checks this repository's releases once a day and offers new versions. You can also check from the menu bar icon: **Check for Updates…**
 
@@ -167,6 +199,7 @@ Builds are signed ad hoc by default, so macOS forgets permissions (such as Acces
 
 - **Now playing** reads macOS's MediaRemote through [mediaremote-adapter](https://github.com/ungive/mediaremote-adapter), since apps lost direct access in macOS 15.4.
 - **Full-screen detection, brightness, headphone battery and Focus** rely on undocumented parts of macOS. Each feature turns itself off safely if its API disappears, but a macOS update can break one of them until a fix ships.
+- **Claude Code alerts** use Claude Code's `Notification` and `Stop` hooks. Each hook runs the app with `--claude-hook`, which passes the event to the running app and exits in a few milliseconds.
 - **Updates** use [Sparkle](https://sparkle-project.org), signed with an EdDSA key on top of Apple's notarization.
 
 ## Credits

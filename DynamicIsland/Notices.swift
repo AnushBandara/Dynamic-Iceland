@@ -51,7 +51,7 @@ final class Notices: NSObject {
 
     func start() {
         startEnabledWatchers()
-        offerClaudeAlerts()
+        setUpClaude()
         NotificationCenter.default.addObserver(forName: UserDefaults.didChangeNotification, object: nil, queue: .main) { _ in
             MainActor.assumeIsolated { self.startEnabledWatchers() }
         }
@@ -249,10 +249,17 @@ final class Notices: NSObject {
         exit(0)
     }
 
+    /// At launch: points the hooks at this copy of the app (it may have moved, e.g. into Applications),
+    /// or offers the alerts once. Never from the test host, which would point the hooks at a build folder.
+    private func setUpClaude() {
+        guard ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] == nil else { return }
+        if isEnabled(Self.claudeKey) { _ = Self.setClaudeHooks(installed: true) } else { offerClaudeAlerts() }
+    }
+
     /// Once, a few seconds after launch: when Claude Code is installed and its alerts are off, offer them.
     // ponytail: offered once even if a HUD covered it; Settings > Alerts is the way back
     private func offerClaudeAlerts() {
-        guard !isEnabled(Self.claudeHintKey), !isEnabled(Self.claudeKey),
+        guard !isEnabled(Self.claudeHintKey),
               FileManager.default.fileExists(atPath: Self.claudeSettingsFile.deletingLastPathComponent().path) else { return }
         UserDefaults.standard.set(true, forKey: Self.claudeHintKey)
         Task {
@@ -359,12 +366,14 @@ final class Notices: NSObject {
         return try? JSONSerialization.data(withJSONObject: root, options: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes])
     }
 
-    /// Adds or removes the hooks. Running Claude Code sessions pick them up when restarted.
-    // ponytail: the hook points at this copy of the app; moving it means toggling the setting again
+    /// Adds or removes the hooks, writing only when that changes the file. Through a symlink (dotfiles
+    /// repos), not over it. Running Claude Code sessions pick the hooks up when restarted.
     nonisolated static func setClaudeHooks(installed: Bool) -> Bool {
-        let file = claudeSettingsFile
+        let file = claudeSettingsFile.resolvingSymlinksInPath()
         let command = installed ? "\"\(Bundle.main.executablePath ?? "")\" \(claudeHookFlag)" : nil
-        guard let data = claudeSettings(try? Data(contentsOf: file), hookCommand: command) else { return false }
+        let existing = try? Data(contentsOf: file)
+        guard let data = claudeSettings(existing, hookCommand: command) else { return false }
+        guard data != existing else { return true }
         try? FileManager.default.createDirectory(at: file.deletingLastPathComponent(), withIntermediateDirectories: true)
         return (try? data.write(to: file, options: .atomic)) != nil
     }
