@@ -227,7 +227,7 @@ private struct AlertSettings: View {
                 FeatureRow(title: "Focus", icon: "moon.fill", color: .indigo,
                            detail: "Shows when Do Not Disturb or another Focus mode turns on or off.",
                            isOn: $focusEnabled, permission: .fullDiskAccess, permissions: permissions)
-                FeatureRow(title: "Claude Code", icon: "sparkle", color: .orange,
+                FeatureRow(title: "Claude Code", icon: "asterisk", color: .orange,
                            detail: "Shows when Claude Code needs your approval or reply, and when it finishes. Adds hooks to ~/.claude/settings.json; restart open sessions.",
                            isOn: $claudeEnabled)
                     .onChange(of: claudeEnabled) { _, on in

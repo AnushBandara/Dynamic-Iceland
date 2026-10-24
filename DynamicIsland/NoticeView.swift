@@ -33,7 +33,8 @@ struct CompactNoticeView: View {
                     .font(.callout.weight(.semibold))
                     .foregroundStyle(isOn ? Self.colors[tint] ?? .indigo : .secondary)
             case .claude(let event, _, _):
-                Image(systemName: "sparkle")
+                Image(systemName: "asterisk") // closest symbol to Claude's starburst
+                    .fontWeight(.black)
                     .foregroundStyle(Self.claudeOrange)
                 Spacer()
                 switch event {
