@@ -91,11 +91,13 @@ struct ClaudeMessageRow: View {
             Text(message)
                 .lineLimit(1)
                 .truncationMode(.tail)
-            Spacer(minLength: 0)
-            Text(project)
-                .lineLimit(1)
-                .foregroundStyle(CompactNoticeView.claudeOrange)
-                .fixedSize() // the message truncates instead
+            if !project.isEmpty { // without one (the offer, its reply) the message centres
+                Spacer(minLength: 0)
+                Text(project)
+                    .lineLimit(1)
+                    .foregroundStyle(CompactNoticeView.claudeOrange)
+                    .fixedSize() // the message truncates instead
+            }
         }
         .font(.callout)
         .padding(.horizontal, 14)
