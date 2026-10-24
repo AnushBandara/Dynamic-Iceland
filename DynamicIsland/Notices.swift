@@ -34,6 +34,7 @@ final class Notices: NSObject {
     @ObservationIgnored private var focusRetry: Task<Void, Never>?
     @ObservationIgnored private var focusMode: String?? // nil until first read: the starting state isn't a change
     @ObservationIgnored private var hideTask: Task<Void, Never>?
+    @ObservationIgnored private var claudeApp: NSRunningApplication?
 
     override init() {
         UserDefaults.standard.register(defaults: [Self.downloadsKey: true, Self.headphonesKey: true, Self.focusKey: true, Self.claudeKey: false, Self.claudeMessageKey: true])
@@ -46,8 +47,10 @@ final class Notices: NSObject {
         }
         DistributedNotificationCenter.default().addObserver(forName: Self.claudeNotification, object: nil, queue: .main) { note in
             let input = note.userInfo?["input"] as? String
+            let app = note.userInfo?["app"] as? Int
             MainActor.assumeIsolated {
                 guard self.isEnabled(Self.claudeKey), let notice = Self.claudeNotice(hookInput: Data((input ?? "").utf8)) else { return }
+                self.claudeApp = app.flatMap { NSRunningApplication(processIdentifier: pid_t($0)) }
                 self.show(notice, for: 6) // long enough to read the message
             }
         }
@@ -229,9 +232,37 @@ final class Notices: NSObject {
     /// Delivered immediately: the app is never active, which would otherwise hold it back.
     nonisolated static func forwardClaudeHookAndExit() -> Never {
         let input = String(decoding: FileHandle.standardInput.readDataToEndOfFile(), as: UTF8.self)
+        var info: [String: Any] = ["input": input]
+        info["app"] = hostApp().map { Int($0) }
         DistributedNotificationCenter.default().postNotificationName(claudeNotification, object: nil,
-                                                                     userInfo: ["input": input], deliverImmediately: true)
+                                                                     userInfo: info, deliverImmediately: true)
         exit(0)
+    }
+
+    /// The app Claude Code runs in (Terminal, VS Code, the Claude app…): the nearest regular app
+    /// above this helper. nil when there is none, e.g. inside tmux, whose server has no app above it.
+    private nonisolated static func hostApp() -> pid_t? {
+        var pid = getppid()
+        while pid > 1 {
+            if NSRunningApplication(processIdentifier: pid)?.activationPolicy == .regular { return pid }
+            var process = kinfo_proc()
+            var size = MemoryLayout<kinfo_proc>.stride
+            var query = [CTL_KERN, KERN_PROC, KERN_PROC_PID, pid]
+            guard sysctl(&query, 4, &process, &size, nil, 0) == 0, size > 0 else { return nil }
+            pid = process.kp_eproc.e_ppid
+        }
+        return nil
+    }
+
+    /// Clicking a Claude Code alert: brings its app forward and dismisses the alert.
+    // ponytail: the app, not the exact window or tab; VS Code with several windows shows its last-used one
+    func openClaudeApp() {
+        if let url = claudeApp?.bundleURL {
+            // Opening, not activate(): an app that isn't active itself can't hand activation to another.
+            NSWorkspace.shared.openApplication(at: url, configuration: NSWorkspace.OpenConfiguration())
+        }
+        hideTask?.cancel()
+        current = nil
     }
 
     /// Stop: Claude finished its turn. Notification: it wants a permission, or is waiting for your reply.

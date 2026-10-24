@@ -135,6 +135,8 @@ struct NotchView: View {
                             .frame(maxHeight: .infinity)
                     }
                 }
+                .contentShape(Rectangle())
+                .onTapGesture { if case .claude = notice { notices.openClaudeApp() } }
                 .transition(.opacity)
             } else if showsCountdown {
                 CompactCountdownView(countdown: countdown)
@@ -180,6 +182,7 @@ struct NotchView: View {
             hotKey.isOpen = false // opened from the keyboard, then visited and left with the pointer
             return
         }
+        if case .claude? = notices.current { return } // stays the alert, to click through to Claude
         hoverIntent = Task {
             try? await Task.sleep(for: Self.hoverDelay)
             if !Task.isCancelled { isHovering = true }
