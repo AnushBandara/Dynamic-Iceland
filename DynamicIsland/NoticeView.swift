@@ -32,6 +32,18 @@ struct CompactNoticeView: View {
                 Text(isOn ? "On" : "Off")
                     .font(.callout.weight(.semibold))
                     .foregroundStyle(isOn ? Self.colors[tint] ?? .indigo : .secondary)
+            case .claude(let event, _):
+                Image(systemName: "sparkle")
+                    .foregroundStyle(Self.claudeOrange)
+                Spacer()
+                switch event {
+                case .approval:
+                    Image(systemName: "hand.raised.fill").foregroundStyle(.orange)
+                case .input:
+                    Image(systemName: "ellipsis.bubble.fill").foregroundStyle(.blue)
+                case .done:
+                    Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
+                }
             }
         }
         .padding(.horizontal, 10)
@@ -44,8 +56,13 @@ struct CompactNoticeView: View {
         case .downloaded(let url): "Downloaded \(url.lastPathComponent)"
         case .headphones(let name, let battery): "\(name) connected" + (battery.map { ", battery \($0) percent" } ?? "")
         case .focus(let name, _, _, let isOn): "\(name) \(isOn ? "on" : "off")"
+        case .claude(.approval, let project): "Claude Code needs approval in \(project)"
+        case .claude(.input, let project): "Claude Code is waiting for you in \(project)"
+        case .claude(.done, let project): "Claude Code finished in \(project)"
         }
     }
+
+    private static let claudeOrange = Color(red: 0.85, green: 0.47, blue: 0.34)
 
     /// Focus tints as named in ModeConfigurations.json.
     private static let colors: [String: Color] = [

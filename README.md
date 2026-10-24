@@ -86,6 +86,7 @@ Dragging files over the notch also shows an **AirDrop** zone, to send them strai
 | 🎧 **Headphones** | AirPods or other Bluetooth headphones connected, with their battery. |
 | ⬇️ **Downloads** | A note when a download finishes. |
 | 🌙 **Focus** | Do Not Disturb or another Focus turning on or off. |
+| ✳️ **Claude Code** | Claude Code needs your approval or reply, or finished its task. Off by default; turning it on adds hooks to `~/.claude/settings.json`. |
 
 When several things happen at once, the iceland shows the most important first: volume and brightness, then battery, then other alerts, then the timer, then now playing.
 

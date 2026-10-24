@@ -3,13 +3,14 @@ import IOBluetooth
 import Observation
 
 /// Short alerts beside the notch: a download finished in ~/Downloads, Bluetooth headphones connected,
-/// or a Focus mode turned on / off.
+/// a Focus mode turned on / off, or Claude Code needs you / finished.
 /// Each watcher starts only once its setting is on, so the Downloads / Bluetooth prompts wait until then.
 @MainActor @Observable
 final class Notices: NSObject {
     static let downloadsKey = "downloadAlertsEnabled"
     static let headphonesKey = "headphoneAlertsEnabled"
     static let focusKey = "focusAlertsEnabled"
+    static let claudeKey = "claudeAlertsEnabled"
     // Browsers write to these, then rename to the real name when the download completes.
     nonisolated static let partialExtensions: Set<String> = ["crdownload", "download", "part", "partial"]
 
@@ -17,7 +18,10 @@ final class Notices: NSObject {
         case downloaded(URL)
         case headphones(name: String, battery: Int?)
         case focus(name: String, symbol: String, tint: String, isOn: Bool)
+        case claude(ClaudeEvent, project: String)
     }
+
+    enum ClaudeEvent { case approval, input, done }
 
     private(set) var current: Notice?
 
@@ -31,13 +35,20 @@ final class Notices: NSObject {
     @ObservationIgnored private var hideTask: Task<Void, Never>?
 
     override init() {
-        UserDefaults.standard.register(defaults: [Self.downloadsKey: true, Self.headphonesKey: true, Self.focusKey: true])
+        UserDefaults.standard.register(defaults: [Self.downloadsKey: true, Self.headphonesKey: true, Self.focusKey: true, Self.claudeKey: false])
     }
 
     func start() {
         startEnabledWatchers()
         NotificationCenter.default.addObserver(forName: UserDefaults.didChangeNotification, object: nil, queue: .main) { _ in
             MainActor.assumeIsolated { self.startEnabledWatchers() }
+        }
+        DistributedNotificationCenter.default().addObserver(forName: Self.claudeNotification, object: nil, queue: .main) { note in
+            let input = note.userInfo?["input"] as? String
+            MainActor.assumeIsolated {
+                guard self.isEnabled(Self.claudeKey), let notice = Self.claudeNotice(hookInput: Data((input ?? "").utf8)) else { return }
+                if case .claude(.done, _) = notice { self.show(notice) } else { self.show(notice, for: 6) }
+            }
         }
     }
 
@@ -204,6 +215,64 @@ final class Notices: NSObject {
         let mode = ((store?["modeConfigurations"] as? [String: Any])?[id] as? [String: Any])?["mode"] as? [String: Any]
         return (mode?["name"] as? String ?? "Focus", mode?["symbolImageName"] as? String ?? "moon.fill",
                 mode?["tintColorName"] as? String ?? "systemIndigoColor")
+    }
+
+    // MARK: Claude Code
+
+    nonisolated static let claudeHookFlag = "--claude-hook"
+    private nonisolated static let claudeNotification = Notification.Name("io.github.anushbandara.dynamicisland.claude")
+    nonisolated static let claudeSettingsFile = FileManager.default.homeDirectoryForCurrentUser
+        .appending(path: ".claude/settings.json")
+
+    /// Helper mode, run by Claude Code's hooks: hands the hook's JSON to the running app and exits.
+    /// Delivered immediately: the app is never active, which would otherwise hold it back.
+    nonisolated static func forwardClaudeHookAndExit() -> Never {
+        let input = String(decoding: FileHandle.standardInput.readDataToEndOfFile(), as: UTF8.self)
+        DistributedNotificationCenter.default().postNotificationName(claudeNotification, object: nil,
+                                                                     userInfo: ["input": input], deliverImmediately: true)
+        exit(0)
+    }
+
+    /// Stop: Claude finished its turn. Notification: it wants a permission, or is waiting for your reply.
+    nonisolated static func claudeNotice(hookInput: Data) -> Notice? {
+        guard let input = (try? JSONSerialization.jsonObject(with: hookInput)) as? [String: Any] else { return nil }
+        let project = ((input["cwd"] as? String ?? "") as NSString).lastPathComponent
+        switch (input["hook_event_name"] as? String, input["notification_type"] as? String) {
+        case ("Stop", _): return .claude(.done, project: project)
+        case ("Notification", "permission_prompt"): return .claude(.approval, project: project)
+        case ("Notification", "idle_prompt"), ("Notification", "elicitation_dialog"): return .claude(.input, project: project)
+        default: return nil
+        }
+    }
+
+    /// ~/.claude/settings.json with this app's Notification and Stop hooks added (`command`) or removed (nil),
+    /// leaving every other hook alone. nil when the existing file isn't valid JSON, so it's never overwritten.
+    nonisolated static func claudeSettings(_ data: Data?, hookCommand command: String?) -> Data? {
+        let parsed = data.map { (try? JSONSerialization.jsonObject(with: $0)) as? [String: Any] } ?? [:]
+        guard var root = parsed else { return nil }
+        var hooks = root["hooks"] as? [String: Any] ?? [:]
+        for event in ["Notification", "Stop"] {
+            var groups = (hooks[event] as? [[String: Any]] ?? []).compactMap { group -> [String: Any]? in
+                let entries = group["hooks"] as? [[String: Any]] ?? []
+                let others = entries.filter { ($0["command"] as? String)?.contains(claudeHookFlag) != true }
+                guard others.count != entries.count else { return group }
+                return others.isEmpty ? nil : group.merging(["hooks": others]) { $1 }
+            }
+            if let command { groups.append(["hooks": [["type": "command", "command": command]]]) }
+            hooks[event] = groups.isEmpty ? nil : groups
+        }
+        root["hooks"] = hooks.isEmpty ? nil : hooks
+        return try? JSONSerialization.data(withJSONObject: root, options: [.prettyPrinted, .sortedKeys, .withoutEscapingSlashes])
+    }
+
+    /// Adds or removes the hooks. Running Claude Code sessions pick them up when restarted.
+    // ponytail: the hook points at this copy of the app; moving it means toggling the setting again
+    nonisolated static func setClaudeHooks(installed: Bool) -> Bool {
+        let file = claudeSettingsFile
+        let command = installed ? "\"\(Bundle.main.executablePath ?? "")\" \(claudeHookFlag)" : nil
+        guard let data = claudeSettings(try? Data(contentsOf: file), hookCommand: command) else { return false }
+        try? FileManager.default.createDirectory(at: file.deletingLastPathComponent(), withIntermediateDirectories: true)
+        return (try? data.write(to: file, options: .atomic)) != nil
     }
 
     private func show(_ notice: Notice, for seconds: Double = 3) {
