@@ -53,7 +53,8 @@ struct NotchView: View {
         // Each side only as wide as its content: HUD bar / battery percentage / time, or artwork.
         // Claude Code's message grows the island by a line under the notch, wide enough to read it.
         let claudeLine: (project: String, message: String)? =
-            if claudeMessages, case .claude(_, let project, let message)? = notice, !message.isEmpty { (project, message) } else { nil }
+            if claudeMessages, case .claude(_, let project, let message)? = notice, !message.isEmpty { (project, message) }
+            else if notice == .claudeHint { ("", "Show Claude Code alerts here? Click to turn on") } else { nil }
         let wings: CGFloat = claudeLine != nil ? 220
             : showsHUD || showsBattery || notice != nil || showsCountdown ? 112 : showsActivity ? notchSize.height * 2 : 0
         let size = isExpanded ? expandedSize
@@ -136,7 +137,13 @@ struct NotchView: View {
                     }
                 }
                 .contentShape(Rectangle())
-                .onTapGesture { if case .claude = notice { notices.openClaudeApp() } }
+                .onTapGesture {
+                    switch notice {
+                    case .claude: notices.openClaudeApp()
+                    case .claudeHint: notices.acceptClaudeHint()
+                    default: break
+                    }
+                }
                 .transition(.opacity)
             } else if showsCountdown {
                 CompactCountdownView(countdown: countdown)
@@ -182,7 +189,7 @@ struct NotchView: View {
             hotKey.isOpen = false // opened from the keyboard, then visited and left with the pointer
             return
         }
-        if case .claude? = notices.current { return } // stays the alert, to click through to Claude
+        if notices.current?.isClaude == true { return } // stays the alert, to click through to Claude
         hoverIntent = Task {
             try? await Task.sleep(for: Self.hoverDelay)
             if !Task.isCancelled { isHovering = true }

@@ -12,6 +12,7 @@ final class Notices: NSObject {
     static let focusKey = "focusAlertsEnabled"
     static let claudeKey = "claudeAlertsEnabled"
     static let claudeMessageKey = "claudeAlertMessages"
+    static let claudeHintKey = "claudeAlertsOffered"
     // Browsers write to these, then rename to the real name when the download completes.
     nonisolated static let partialExtensions: Set<String> = ["crdownload", "download", "part", "partial"]
 
@@ -20,6 +21,14 @@ final class Notices: NSObject {
         case headphones(name: String, battery: Int?)
         case focus(name: String, symbol: String, tint: String, isOn: Bool)
         case claude(ClaudeEvent, project: String, message: String)
+        case claudeHint // once, offering the Claude Code alerts
+
+        var isClaude: Bool {
+            switch self {
+            case .claude, .claudeHint: true
+            default: false
+            }
+        }
     }
 
     enum ClaudeEvent { case approval, input, done }
@@ -42,6 +51,7 @@ final class Notices: NSObject {
 
     func start() {
         startEnabledWatchers()
+        offerClaudeAlerts()
         NotificationCenter.default.addObserver(forName: UserDefaults.didChangeNotification, object: nil, queue: .main) { _ in
             MainActor.assumeIsolated { self.startEnabledWatchers() }
         }
@@ -237,6 +247,29 @@ final class Notices: NSObject {
         DistributedNotificationCenter.default().postNotificationName(claudeNotification, object: nil,
                                                                      userInfo: info, deliverImmediately: true)
         exit(0)
+    }
+
+    /// Once, a few seconds after launch: when Claude Code is installed and its alerts are off, offer them.
+    // ponytail: offered once even if a HUD covered it; Settings > Alerts is the way back
+    private func offerClaudeAlerts() {
+        guard !isEnabled(Self.claudeHintKey), !isEnabled(Self.claudeKey),
+              FileManager.default.fileExists(atPath: Self.claudeSettingsFile.deletingLastPathComponent().path) else { return }
+        UserDefaults.standard.set(true, forKey: Self.claudeHintKey)
+        Task {
+            try? await Task.sleep(for: .seconds(3))
+            show(.claudeHint, for: 10)
+        }
+    }
+
+    /// Clicking the offer: turns the alerts on, then says so.
+    func acceptClaudeHint() {
+        claudeApp = nil
+        if Self.setClaudeHooks(installed: true) {
+            UserDefaults.standard.set(true, forKey: Self.claudeKey)
+            show(.claude(.done, project: "", message: "Claude Code alerts on. Restart open sessions"), for: 4)
+        } else {
+            show(.claude(.input, project: "", message: "Couldn't update ~/.claude/settings.json"), for: 6)
+        }
     }
 
     /// The app Claude Code runs in (Terminal, VS Code, the Claude app…): the nearest regular app

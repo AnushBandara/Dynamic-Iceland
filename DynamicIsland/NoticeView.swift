@@ -45,6 +45,12 @@ struct CompactNoticeView: View {
                 case .done:
                     Image(systemName: "checkmark.circle.fill").foregroundStyle(.green)
                 }
+            case .claudeHint:
+                Image(systemName: "asterisk")
+                    .fontWeight(.black)
+                    .foregroundStyle(Self.claudeOrange)
+                Spacer()
+                Image(systemName: "bell.badge.fill").foregroundStyle(.orange)
             }
         }
         .padding(.horizontal, 10)
@@ -60,6 +66,7 @@ struct CompactNoticeView: View {
         case .claude(.approval, let project, let message): "Claude Code needs approval in \(project). \(message)"
         case .claude(.input, let project, let message): "Claude Code is waiting for you in \(project). \(message)"
         case .claude(.done, let project, let message): "Claude Code finished in \(project). \(message)"
+        case .claudeHint: "Show Claude Code alerts in the island? Click to turn on."
         }
     }
 
