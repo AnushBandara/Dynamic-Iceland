@@ -125,33 +125,52 @@ struct CompactNowPlayingView: View {
     }
 }
 
-/// Five bars that ease to a new height four times a second. SF Symbol effects and variable
-/// values kept the island redrawing (~20% CPU while playing); plain shapes are far cheaper.
-private struct Waveform: View {
+/// Five bars easing between heights. Core Animation runs the loop in the render server, so the
+/// app does no work per frame; SwiftUI animations (and SF Symbol effects before them) re-rendered
+/// the island every frame, ~11-20% CPU while playing.
+private struct Waveform: NSViewRepresentable {
     let isPlaying: Bool
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @State private var step = 0
 
     private static let resting: [CGFloat] = [0.35, 0.65, 1, 0.65, 0.35]
     private static let steps: [[CGFloat]] = [
         [0.5, 0.9, 0.6, 0.8, 0.4], [0.8, 0.5, 1, 0.5, 0.7], [0.4, 1, 0.7, 0.6, 0.9], [0.7, 0.6, 0.9, 1, 0.5],
     ]
 
-    var body: some View {
-        let isMoving = isPlaying && !reduceMotion
-        let heights = isMoving ? Self.steps[step % Self.steps.count] : Self.resting
-        HStack(spacing: 2) {
-            ForEach(heights.indices, id: \.self) { index in
-                Capsule().frame(width: 2.5, height: 3 + 13 * heights[index])
-            }
+    private static func height(_ level: CGFloat) -> CGFloat { 3 + 13 * level }
+
+    func sizeThatFits(_ proposal: ProposedViewSize, nsView: NSView, context: Context) -> CGSize? {
+        CGSize(width: 5 * 2.5 + 4 * 2, height: 16)
+    }
+
+    func makeNSView(context: Context) -> NSView {
+        let view = NSView()
+        view.wantsLayer = true
+        for index in Self.resting.indices {
+            let bar = CALayer()
+            bar.backgroundColor = NSColor.white.cgColor
+            bar.cornerRadius = 1.25
+            bar.bounds.size = CGSize(width: 2.5, height: Self.height(Self.resting[index]))
+            bar.position = CGPoint(x: 1.25 + CGFloat(index) * 4.5, y: 8)
+            view.layer?.addSublayer(bar)
         }
-        .frame(height: 16)
-        .animation(.easeInOut(duration: 0.25), value: step)
-        .task(id: isMoving) {
-            while isMoving && !Task.isCancelled {
-                try? await Task.sleep(for: .milliseconds(250))
-                step += 1
+        return view
+    }
+
+    func updateNSView(_ view: NSView, context: Context) {
+        let isMoving = isPlaying && !reduceMotion
+        for (index, bar) in (view.layer?.sublayers ?? []).enumerated() {
+            guard isMoving else {
+                bar.removeAnimation(forKey: "wave")
+                continue
             }
+            guard bar.animation(forKey: "wave") == nil else { continue }
+            let wave = CAKeyframeAnimation(keyPath: "bounds.size.height")
+            wave.values = (Self.steps + [Self.steps[0]]).map { Self.height($0[index]) }
+            wave.timingFunctions = Self.steps.map { _ in CAMediaTimingFunction(name: .easeInEaseOut) }
+            wave.duration = 0.25 * Double(Self.steps.count)
+            wave.repeatCount = .infinity
+            bar.add(wave, forKey: "wave")
         }
     }
 }
