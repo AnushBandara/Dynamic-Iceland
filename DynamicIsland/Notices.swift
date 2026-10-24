@@ -11,6 +11,7 @@ final class Notices: NSObject {
     static let headphonesKey = "headphoneAlertsEnabled"
     static let focusKey = "focusAlertsEnabled"
     static let claudeKey = "claudeAlertsEnabled"
+    static let claudeMessageKey = "claudeAlertMessages"
     // Browsers write to these, then rename to the real name when the download completes.
     nonisolated static let partialExtensions: Set<String> = ["crdownload", "download", "part", "partial"]
 
@@ -18,7 +19,7 @@ final class Notices: NSObject {
         case downloaded(URL)
         case headphones(name: String, battery: Int?)
         case focus(name: String, symbol: String, tint: String, isOn: Bool)
-        case claude(ClaudeEvent, project: String)
+        case claude(ClaudeEvent, project: String, message: String)
     }
 
     enum ClaudeEvent { case approval, input, done }
@@ -35,7 +36,7 @@ final class Notices: NSObject {
     @ObservationIgnored private var hideTask: Task<Void, Never>?
 
     override init() {
-        UserDefaults.standard.register(defaults: [Self.downloadsKey: true, Self.headphonesKey: true, Self.focusKey: true, Self.claudeKey: false])
+        UserDefaults.standard.register(defaults: [Self.downloadsKey: true, Self.headphonesKey: true, Self.focusKey: true, Self.claudeKey: false, Self.claudeMessageKey: true])
     }
 
     func start() {
@@ -47,7 +48,7 @@ final class Notices: NSObject {
             let input = note.userInfo?["input"] as? String
             MainActor.assumeIsolated {
                 guard self.isEnabled(Self.claudeKey), let notice = Self.claudeNotice(hookInput: Data((input ?? "").utf8)) else { return }
-                if case .claude(.done, _) = notice { self.show(notice) } else { self.show(notice, for: 6) }
+                self.show(notice, for: 6) // long enough to read the message
             }
         }
     }
@@ -234,15 +235,44 @@ final class Notices: NSObject {
     }
 
     /// Stop: Claude finished its turn. Notification: it wants a permission, or is waiting for your reply.
+    /// The message is Claude Code's own ("Claude needs your permission to use Bash"), or for Stop the
+    /// first line of Claude's last reply, read from the session transcript.
     nonisolated static func claudeNotice(hookInput: Data) -> Notice? {
         guard let input = (try? JSONSerialization.jsonObject(with: hookInput)) as? [String: Any] else { return nil }
         let project = ((input["cwd"] as? String ?? "") as NSString).lastPathComponent
+        let message = input["message"] as? String ?? ""
         switch (input["hook_event_name"] as? String, input["notification_type"] as? String) {
-        case ("Stop", _): return .claude(.done, project: project)
-        case ("Notification", "permission_prompt"): return .claude(.approval, project: project)
-        case ("Notification", "idle_prompt"), ("Notification", "elicitation_dialog"): return .claude(.input, project: project)
+        case ("Stop", _):
+            let reply = (input["transcript_path"] as? String).flatMap { lastReply(transcript: URL(filePath: $0)) }
+            return .claude(.done, project: project, message: reply ?? "Finished")
+        case ("Notification", "permission_prompt"): return .claude(.approval, project: project, message: message)
+        case ("Notification", "idle_prompt"), ("Notification", "elicitation_dialog"):
+            return .claude(.input, project: project, message: message)
         default: return nil
         }
+    }
+
+    /// First line of the newest assistant text in a transcript (JSON lines), without Markdown marks.
+    /// Only the end of the file is read: transcripts grow to megabytes.
+    nonisolated static func lastReply(transcript: URL) -> String? {
+        guard let file = try? FileHandle(forReadingFrom: transcript) else { return nil }
+        defer { try? file.close() }
+        let size = (try? file.seekToEnd()) ?? 0
+        try? file.seek(toOffset: size > 262_144 ? size - 262_144 : 0)
+        let tail = String(decoding: (try? file.readToEnd()) ?? Data(), as: UTF8.self)
+        for line in tail.split(separator: "\n").reversed() where line.contains(#""type":"assistant""#) {
+            guard let entry = (try? JSONSerialization.jsonObject(with: Data(line.utf8))) as? [String: Any],
+                  entry["isSidechain"] as? Bool != true, // a subagent's reply, not Claude's
+                  let content = (entry["message"] as? [String: Any])?["content"] as? [[String: Any]],
+                  let text = content.last(where: { $0["type"] as? String == "text" })?["text"] as? String
+            else { continue }
+            let first = text.split(separator: "\n").lazy
+                .map { $0.replacingOccurrences(of: "**", with: "").replacingOccurrences(of: "`", with: "")
+                    .trimmingCharacters(in: CharacterSet(charactersIn: "#-*> ").union(.whitespaces)) }
+                .first { !$0.isEmpty }
+            if let first { return first }
+        }
+        return nil
     }
 
     /// ~/.claude/settings.json with this app's Notification and Stop hooks added (`command`) or removed (nil),

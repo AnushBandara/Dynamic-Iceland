@@ -32,7 +32,7 @@ struct CompactNoticeView: View {
                 Text(isOn ? "On" : "Off")
                     .font(.callout.weight(.semibold))
                     .foregroundStyle(isOn ? Self.colors[tint] ?? .indigo : .secondary)
-            case .claude(let event, _):
+            case .claude(let event, _, _):
                 Image(systemName: "sparkle")
                     .foregroundStyle(Self.claudeOrange)
                 Spacer()
@@ -56,13 +56,13 @@ struct CompactNoticeView: View {
         case .downloaded(let url): "Downloaded \(url.lastPathComponent)"
         case .headphones(let name, let battery): "\(name) connected" + (battery.map { ", battery \($0) percent" } ?? "")
         case .focus(let name, _, _, let isOn): "\(name) \(isOn ? "on" : "off")"
-        case .claude(.approval, let project): "Claude Code needs approval in \(project)"
-        case .claude(.input, let project): "Claude Code is waiting for you in \(project)"
-        case .claude(.done, let project): "Claude Code finished in \(project)"
+        case .claude(.approval, let project, let message): "Claude Code needs approval in \(project). \(message)"
+        case .claude(.input, let project, let message): "Claude Code is waiting for you in \(project). \(message)"
+        case .claude(.done, let project, let message): "Claude Code finished in \(project). \(message)"
         }
     }
 
-    private static let claudeOrange = Color(red: 0.85, green: 0.47, blue: 0.34)
+    static let claudeOrange = Color(red: 0.85, green: 0.47, blue: 0.34)
 
     /// Focus tints as named in ModeConfigurations.json.
     private static let colors: [String: Color] = [
@@ -71,4 +71,26 @@ struct CompactNoticeView: View {
         "systemOrangeColor": .orange, "systemRedColor": .red, "systemPinkColor": .pink, "systemBrownColor": .brown,
         "systemGrayColor": .gray,
     ]
+}
+
+/// Claude Code's message under the notch, when the island grows a line instead of showing only icons.
+struct ClaudeMessageRow: View {
+    let project: String
+    let message: String
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Text(message)
+                .lineLimit(1)
+                .truncationMode(.tail)
+            Spacer(minLength: 0)
+            Text(project)
+                .lineLimit(1)
+                .foregroundStyle(CompactNoticeView.claudeOrange)
+                .fixedSize() // the message truncates instead
+        }
+        .font(.callout)
+        .padding(.horizontal, 14)
+        .accessibilityHidden(true) // read with the notice above it
+    }
 }

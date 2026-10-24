@@ -31,6 +31,7 @@ struct NotchView: View {
     @AppStorage(DropZone.airDropKey) private var airDropEnabled = true
     @AppStorage(CameraMirror.enabledKey) private var mirrorEnabled = true
     @AppStorage(Countdown.enabledKey) private var timerEnabled = true
+    @AppStorage(Notices.claudeMessageKey) private var claudeMessages = true
 
     var body: some View {
         // Dragging a file onto the notch opens it too: hover doesn't fire during a drag.
@@ -50,9 +51,14 @@ struct NotchView: View {
                                   height: NotchPanel.expandedSize.height)
         let cornerWidth = (expandedSize.width - notchSize.width) / 2 - 32 // strips beside the notch
         // Each side only as wide as its content: HUD bar / battery percentage / time, or artwork.
-        let wings: CGFloat = showsHUD || showsBattery || notice != nil || showsCountdown ? 112 : showsActivity ? notchSize.height * 2 : 0
-        let size = isExpanded ? expandedSize : CGSize(width: notchSize.width + wings, height: notchSize.height)
-        let radius: CGFloat = isExpanded ? 24 : 10
+        // Claude Code's message grows the island by a line under the notch, wide enough to read it.
+        let claudeLine: (project: String, message: String)? =
+            if claudeMessages, case .claude(_, let project, let message)? = notice, !message.isEmpty { (project, message) } else { nil }
+        let wings: CGFloat = claudeLine != nil ? 220
+            : showsHUD || showsBattery || notice != nil || showsCountdown ? 112 : showsActivity ? notchSize.height * 2 : 0
+        let size = isExpanded ? expandedSize
+            : CGSize(width: notchSize.width + wings, height: notchSize.height + (claudeLine != nil ? 28 : 0))
+        let radius: CGFloat = isExpanded ? 24 : claudeLine != nil ? 16 : 10
         let shape = UnevenRoundedRectangle(bottomLeadingRadius: radius, bottomTrailingRadius: radius)
         let dropZones = DropZone.allCases.filter { $0 == .shelf ? shelfEnabled : airDropEnabled }
 
@@ -121,9 +127,15 @@ struct NotchView: View {
                     .frame(maxHeight: .infinity)
                     .transition(.opacity)
             } else if let notice {
-                CompactNoticeView(notice: notice)
-                    .frame(maxHeight: .infinity)
-                    .transition(.opacity)
+                VStack(spacing: 0) {
+                    CompactNoticeView(notice: notice)
+                        .frame(height: notchSize.height)
+                    if let claudeLine {
+                        ClaudeMessageRow(project: claudeLine.project, message: claudeLine.message)
+                            .frame(maxHeight: .infinity)
+                    }
+                }
+                .transition(.opacity)
             } else if showsCountdown {
                 CompactCountdownView(countdown: countdown)
                     .frame(maxHeight: .infinity)

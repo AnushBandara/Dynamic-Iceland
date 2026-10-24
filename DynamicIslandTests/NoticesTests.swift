@@ -23,9 +23,10 @@ import Testing
 
 @Test func readsClaudeCodeHooks() {
     func notice(_ json: String) -> Notices.Notice? { Notices.claudeNotice(hookInput: Data(json.utf8)) }
-    #expect(notice(#"{"hook_event_name":"Stop","cwd":"/Users/me/app"}"#) == .claude(.done, project: "app"))
-    #expect(notice(#"{"hook_event_name":"Notification","notification_type":"permission_prompt","cwd":"/x/api"}"#) == .claude(.approval, project: "api"))
-    #expect(notice(#"{"hook_event_name":"Notification","notification_type":"idle_prompt","cwd":"/x/api"}"#) == .claude(.input, project: "api"))
+    #expect(notice(#"{"hook_event_name":"Stop","cwd":"/Users/me/app"}"#) == .claude(.done, project: "app", message: "Finished"))
+    #expect(notice(#"{"hook_event_name":"Notification","notification_type":"permission_prompt","cwd":"/x/api","message":"Claude needs your permission to use Bash"}"#)
+        == .claude(.approval, project: "api", message: "Claude needs your permission to use Bash"))
+    #expect(notice(#"{"hook_event_name":"Notification","notification_type":"idle_prompt","cwd":"/x/api","message":"Waiting"}"#) == .claude(.input, project: "api", message: "Waiting"))
     #expect(notice(#"{"hook_event_name":"Notification","notification_type":"auth_success"}"#) == nil)
     #expect(notice("not json") == nil)
 }
@@ -48,4 +49,21 @@ import Testing
 
     #expect(Notices.claudeSettings(Data("{ broken".utf8), hookCommand: "x --claude-hook") == nil)
     #expect(Notices.claudeSettings(nil, hookCommand: "x --claude-hook") != nil)
+}
+
+@Test func readsLastClaudeReplyFromTranscript() throws {
+    let lines = [
+        #"{"type":"assistant","message":{"content":[{"type":"text","text":"Old reply"}]}}"#,
+        #"{"type":"assistant","message":{"content":[{"type":"thinking","thinking":"hmm"},{"type":"text","text":"\n## **Fixed** the `login` bug\nDetails"}]}}"#,
+        #"{"type":"assistant","isSidechain":true,"message":{"content":[{"type":"text","text":"Subagent report"}]}}"#,
+        #"{"type":"assistant","message":{"content":[{"type":"tool_use","name":"Bash"}]}}"#,
+        #"{"type":"system","content":"Stop hook"}"#,
+    ]
+    let file = FileManager.default.temporaryDirectory.appending(path: "\(UUID()).jsonl")
+    try lines.joined(separator: "\n").write(to: file, atomically: true, encoding: .utf8)
+    defer { try? FileManager.default.removeItem(at: file) }
+    #expect(Notices.lastReply(transcript: file) == "Fixed the login bug")
+
+    let stop = #"{"hook_event_name":"Stop","cwd":"/x/app","transcript_path":"\#(file.path)"}"#
+    #expect(Notices.claudeNotice(hookInput: Data(stop.utf8)) == .claude(.done, project: "app", message: "Fixed the login bug"))
 }
