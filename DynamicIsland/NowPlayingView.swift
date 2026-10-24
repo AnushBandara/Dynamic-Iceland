@@ -125,9 +125,8 @@ struct CompactNowPlayingView: View {
     }
 }
 
-/// Five bars that change height four times a second, without animating in between. SF Symbol
-/// effects and variable values animate on every change, which kept the island redrawing
-/// (~20% CPU while playing); plain shapes cost well under 1%.
+/// Five bars that ease to a new height four times a second. SF Symbol effects and variable
+/// values kept the island redrawing (~20% CPU while playing); plain shapes are far cheaper.
 private struct Waveform: View {
     let isPlaying: Bool
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -147,6 +146,7 @@ private struct Waveform: View {
             }
         }
         .frame(height: 16)
+        .animation(.easeInOut(duration: 0.25), value: step)
         .task(id: isMoving) {
             while isMoving && !Task.isCancelled {
                 try? await Task.sleep(for: .milliseconds(250))
